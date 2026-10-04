@@ -1,0 +1,134 @@
+# Home Budget
+
+A self-hosted household budget app built on the Barefoot Investor bucket method: Bills, Smile, Splurge and Fire Extinguisher. It runs on your own server with `docker compose up -d` and keeps everything in PostgreSQL.
+
+> **Build status: Phase 1 of 6 (Foundation).** Accounts, transactions with splits, categories, buckets, settings, and secure login all work. The dashboard, budgets and recurring schedules are Phase 2. See [Roadmap](#roadmap).
+
+## What works now
+
+- **Accounts:** everyday, savings, offset, cash, investment, super, cards and loans. Balances are always worked out from the opening balance plus transactions, never typed in. There's a balance history chart and a one-step "reconcile to statement".
+- **Transactions:** income, expenses (split across categories if you like), refunds, transfers, debt repayments, savings contributions, balance adjustments and interest charges. Search, filter, sort, paginate, bulk recategorise and bulk delete.
+- **The money rules from the spec:**
+  - Transfers and card repayments never count as spending.
+  - Loan repayments split automatically into the minimum (Bills) and any extra (Fire Extinguisher).
+  - Refunds reduce their category.
+  - Card interest is an *Interest and fees* expense.
+- **Buckets and categories:** seeded with the Australian defaults. You can rename, reorder, move, disable or delete categories (deleting one with history reassigns it). Bucket percentages must total exactly 100%.
+- **Security:**
+  - Argon2id passwords and server-side sessions in HTTP-only cookies, revocable instantly.
+  - CSRF tokens, Origin checks, per-IP and per-email rate limits with backoff.
+  - A registration switch, strict security headers, and full household isolation.
+- **Settings:** budget period, display frequency, thresholds, currency, locale, time zone, financial year, theme (light, dark or system).
+
+## Quick start (Ubuntu server)
+
+You need Docker Engine with the Compose plugin.
+
+```bash
+git clone <repository> /opt/home-budget
+cd /opt/home-budget
+cp .env.example .env
+openssl rand -hex 32   # paste into SESSION_SECRET
+openssl rand -hex 24   # paste into POSTGRES_PASSWORD
+nano .env              # set PUBLIC_URL to the address you'll use
+docker compose up -d
+```
+
+Point your reverse proxy at port 8080 and open your `PUBLIC_URL`. The first person to register becomes the household owner, and registration then closes.
+
+See [docs/deployment.md](docs/deployment.md) for reverse proxy setup (Nginx Proxy Manager, Traefik, Cloudflare Tunnel) and plain-HTTP LAN testing.
+
+## Everyday commands
+
+```bash
+docker compose up -d                       # start
+docker compose down                        # stop (data is kept)
+docker compose logs -f                     # follow logs
+docker compose restart                     # restart everything
+git pull && docker compose up -d --build   # update; migrations run on start
+./scripts/backup.sh                        # back up the database
+./scripts/restore.sh backups/<file>.dump   # restore a backup
+docker compose exec backend npm run reset-password -- you@example.com
+```
+
+> ⚠️ **`docker compose down -v` deletes the database volume and every record in it.** Never add `-v` unless you mean to wipe everything. Take a backup first.
+
+- `docker compose pull` only refreshes the PostgreSQL image. The app images are built locally, so update with `git pull && docker compose up -d --build`.
+- Major PostgreSQL version upgrades (16 → 17) need a dump and restore. See [docs/backup-restore.md](docs/backup-restore.md).
+
+## Forgotten passwords
+
+With SMTP configured in `.env`, "Forgot password" emails a single-use link that is valid for 30 minutes. Without SMTP, whoever runs the server resets it from the command line:
+
+```bash
+docker compose exec backend npm run reset-password -- you@example.com
+```
+
+That prints a temporary password and signs the user out everywhere. Change it afterwards in **Settings → Security**.
+
+## Backups
+
+```bash
+./scripts/backup.sh
+```
+
+This writes `backups/budget-YYYYMMDD-HHMMSS.dump` (readable by your user only), keeps the newest `BACKUP_RETENTION` files, and exits non-zero on failure so cron can alert you. Run it nightly:
+
+```cron
+0 2 * * * cd /opt/home-budget && ./scripts/backup.sh
+```
+
+Copy backups off the server as well. A backup on the same disk won't survive the disk failing. Restore and test-restore steps are in [docs/backup-restore.md](docs/backup-restore.md).
+
+## Development
+
+You'll need Node 24 and a PostgreSQL 16 database. The backend reads `backend/.env`:
+
+```env
+DATABASE_URL=postgresql://budget:budget@localhost:5432/budget_dev
+PUBLIC_URL=http://localhost:5173
+SESSION_SECRET=<at least 32 random characters>
+NODE_ENV=development
+ALLOW_REGISTRATION=true
+```
+
+```bash
+cd backend && npm ci && npx prisma migrate deploy && npm run dev   # API on :3000
+cd frontend && npm ci && npm run dev                               # UI on :5173, proxies /api
+```
+
+The API docs (OpenAPI) are at `/api/docs` once you're logged in.
+
+### Tests
+
+```bash
+cd backend
+npm test                 # unit + API tests; API tests start PostgreSQL with Testcontainers (needs Docker)
+TEST_DATABASE_URL=postgresql://user:pass@localhost:5432/budget_test npm test   # or use an existing empty database
+TZ=Australia/Melbourne npm run test:finance   # finance tests under another time zone
+npm run test:coverage    # finance module must stay at 100% line coverage, backend ≥ 70%
+
+cd frontend && npm test  # component tests
+cd e2e && npx playwright test   # smoke test against the Compose stack on :8080 (ALLOW_REGISTRATION=true)
+```
+
+## Project layout
+
+```
+backend/   Fastify API, Prisma schema and migrations, finance module (src/finance), jobs, CLI
+frontend/  React + Vite UI, served by nginx, which also proxies /api
+e2e/       Playwright smoke tests
+scripts/   backup.sh, restore.sh
+docs/      deployment, backup and restore, data model
+```
+
+## Roadmap
+
+1. **Foundation** ✅ Docker Compose, schema, auth and security, buckets and categories, accounts, transactions, finance core.
+2. **Budget and recurring:** budgets and budget vs actual, dashboard, recurring schedules (post, skip, auto-post), Bills page.
+3. **Fire Extinguisher:** sinking funds, goals, debts with payoff simulation, offsets, extra repayments.
+4. **Insight:** reports, forecast, net worth with valuations and snapshots, calendar.
+5. **Automation:** CSV import with duplicate detection, categorisation rules, notifications, data export.
+6. **Hardening and docs:** OWASP review, accessibility pass, 50,000-transaction performance check, demo data.
+
+Out of scope for v1: bank feeds, multi-currency, public holiday calendars, native apps, live investment prices, and hosting under a subpath.

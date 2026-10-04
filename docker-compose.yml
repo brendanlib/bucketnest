@@ -1,0 +1,88 @@
+# Home Budget — docker compose up -d
+# Only the frontend is reachable from outside. Its nginx proxies /api to the backend.
+
+name: home-budget
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-budget}
+      POSTGRES_USER: ${POSTGRES_USER:-budget}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [db]
+    # No ports: the database is never published to the host.
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      # Assembled here so the password is set once, in POSTGRES_PASSWORD.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-budget}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-budget}
+      PUBLIC_URL: ${PUBLIC_URL:?Set PUBLIC_URL in .env}
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env}
+      TRUST_PROXY: ${TRUST_PROXY:-}
+      # The bundled nginx is always one proxy hop in front of the backend.
+      INTERNAL_PROXY_HOPS: "1"
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-}
+      DEFAULT_TIMEZONE: ${DEFAULT_TIMEZONE:-Australia/Sydney}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SEED_DEMO: ${SEED_DEMO:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    networks: [db, web]
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    networks: [web]
+    # Traefik instead of a published port: remove `ports` above, join Traefik's
+    # network, and add labels like these.
+    # labels:
+    #   - traefik.enable=true
+    #   - traefik.http.routers.budget.rule=Host(`budget.example.com`)
+    #   - traefik.http.routers.budget.entrypoints=websecure
+    #   - traefik.http.routers.budget.tls.certresolver=letsencrypt
+    #   - traefik.http.services.budget.loadbalancer.server.port=8080
+
+  # Optional Cloudflare Tunnel: docker compose --profile tunnel up -d
+  # Point the tunnel's public hostname at http://frontend:8080.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    profiles: [tunnel]
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on: [frontend]
+    networks: [web]
+
+networks:
+  # The database network has no route to the outside world.
+  db:
+    internal: true
+  web: {}
+
+volumes:
+  pgdata:

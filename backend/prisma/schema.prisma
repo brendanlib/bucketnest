@@ -1,0 +1,816 @@
+// Home Budget data model. See docs/data-model.md for the rules behind it.
+// Money is integer cents (BIGINT). Rates are NUMERIC. Dates without a time are DATE.
+// Every data record carries a non-null household_id.
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum MemberRole {
+  OWNER
+  MEMBER
+}
+
+enum BucketKey {
+  BILLS
+  SMILE
+  SPLURGE
+  FIRE_EXTINGUISHER
+}
+
+enum CategoryKind {
+  INCOME
+  EXPENSE
+}
+
+enum AccountType {
+  TRANSACTION
+  SAVINGS
+  OFFSET
+  CASH
+  INVESTMENT
+  SUPERANNUATION
+  OTHER_ASSET
+  CREDIT_CARD
+  MORTGAGE
+  PERSONAL_LOAN
+  CAR_LOAN
+  HECS_HELP
+  OTHER_LIABILITY
+}
+
+enum AccountClass {
+  ASSET
+  LIABILITY
+}
+
+enum RepaymentTreatment {
+  TRANSFER
+  DEBT_REPAYMENT
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  REFUND
+  TRANSFER
+  DEBT_REPAYMENT
+  SAVINGS_CONTRIBUTION
+  BALANCE_ADJUSTMENT
+  INTEREST_CHARGE
+}
+
+enum AdjustmentDirection {
+  INCREASE
+  DECREASE
+}
+
+enum Frequency {
+  WEEKLY
+  FORTNIGHTLY
+  MONTHLY
+  QUARTERLY
+  SIX_MONTHLY
+  ANNUALLY
+  EVERY_N_DAYS
+  EVERY_N_WEEKS
+  EVERY_N_MONTHS
+}
+
+enum BudgetPeriodType {
+  WEEKLY
+  FORTNIGHTLY
+  MONTHLY
+  ANNUAL
+}
+
+enum AllocationBasis {
+  PLANNED
+  ACTUAL
+}
+
+enum AmountKind {
+  FIXED
+  ESTIMATE
+}
+
+enum WeekendRule {
+  NONE
+  PREVIOUS_BUSINESS_DAY
+  NEXT_BUSINESS_DAY
+}
+
+enum RecurringType {
+  INCOME
+  EXPENSE
+  TRANSFER
+  DEBT_REPAYMENT
+  SAVINGS_CONTRIBUTION
+}
+
+enum ExceptionAction {
+  SKIP
+  EDIT
+}
+
+enum GoalType {
+  EMERGENCY_FUND
+  SAVINGS
+  INVESTMENT
+}
+
+enum AssetType {
+  PROPERTY
+  VEHICLE
+  OTHER
+}
+
+enum RuleMatchField {
+  DESCRIPTION
+  PAYEE
+}
+
+enum RuleMatchType {
+  CONTAINS
+  STARTS_WITH
+  EQUALS
+}
+
+enum RuleDirection {
+  ANY
+  DEBIT
+  CREDIT
+}
+
+enum SignConvention {
+  NEGATIVE_IS_DEBIT
+  POSITIVE_IS_DEBIT
+  DEBIT_CREDIT_COLUMNS
+}
+
+enum ImportBatchStatus {
+  COMMITTED
+  UNDONE
+}
+
+enum NotificationType {
+  UPCOMING_BILL
+  OVERSPENDING
+  SINKING_FUND_DEADLINE
+  BUDGET_REVIEW
+  GOAL_MILESTONE
+}
+
+enum DebtPayoffStrategy {
+  SNOWBALL
+  AVALANCHE
+}
+
+// ─── Identity and access ─────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  /// Stored lower-cased; the unique index is therefore case-insensitive.
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  sessions       Session[]
+  resetTokens    PasswordResetToken[]
+  memberships    HouseholdMember[]
+  transactions   Transaction[]
+
+  @@map("users")
+}
+
+model Session {
+  id          String   @id @default(uuid()) @db.Uuid
+  /// HMAC-SHA256 of the opaque cookie value. The raw value is never stored.
+  tokenHash   String   @unique @map("token_hash")
+  userId      String   @map("user_id") @db.Uuid
+  expiresAt   DateTime @map("expires_at") @db.Timestamptz(3)
+  lastSeenAt  DateTime @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+  userAgent   String?  @map("user_agent")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  userId    String    @map("user_id") @db.Uuid
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(3)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model Household {
+  id                   String           @id @default(uuid()) @db.Uuid
+  name                 String
+  currency             String           @default("AUD") @db.Char(3)
+  locale               String           @default("en-AU")
+  timezone             String           @default("Australia/Sydney")
+  /// 1–12. Australia: 7 (July).
+  fyStartMonth         Int              @default(7) @map("fy_start_month") @db.SmallInt
+  /// ISO weekday 1 (Monday) – 7 (Sunday).
+  weekStartDay         Int              @default(1) @map("week_start_day") @db.SmallInt
+  budgetPeriodType     BudgetPeriodType @default(MONTHLY) @map("budget_period_type")
+  budgetAnchorDate     DateTime         @default(dbgenerated("CURRENT_DATE")) @map("budget_anchor_date") @db.Date
+  displayFrequency     Frequency        @default(MONTHLY) @map("display_frequency")
+  allocationBasis      AllocationBasis  @default(PLANNED) @map("allocation_basis")
+  amberThreshold       Decimal          @default(90) @map("amber_threshold") @db.Decimal(5, 2)
+  redThreshold         Decimal          @default(100) @map("red_threshold") @db.Decimal(5, 2)
+  debtPayoffStrategy   DebtPayoffStrategy @default(SNOWBALL) @map("debt_payoff_strategy")
+  gstEnabled           Boolean          @default(false) @map("gst_enabled")
+  createdAt            DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  members              HouseholdMember[]
+  buckets              Bucket[]
+  categories           Category[]
+  accounts             Account[]
+  transactions         Transaction[]
+  transactionSplits    TransactionSplit[]
+  budgets              Budget[]
+  budgetItems          BudgetItem[]
+  recurring            RecurringTransaction[]
+  recurringExceptions  RecurringException[]
+  sinkingFunds         SinkingFund[]
+  goals                FinancialGoal[]
+  debts                Debt[]
+  assets               Asset[]
+  assetValuations      AssetValuation[]
+  netWorthSnapshots    NetWorthSnapshot[]
+  rules                CategorisationRule[]
+  importProfiles       ImportProfile[]
+  importBatches        ImportBatch[]
+  notifications        Notification[]
+  notificationSettings NotificationSetting[]
+
+  @@map("households")
+}
+
+model HouseholdMember {
+  id          String     @id @default(uuid()) @db.Uuid
+  householdId String     @map("household_id") @db.Uuid
+  userId      String     @map("user_id") @db.Uuid
+  role        MemberRole @default(MEMBER)
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, userId])
+  @@index([userId])
+  @@map("household_members")
+}
+
+// ─── Buckets and categories ──────────────────────────────────────────────────
+
+model Bucket {
+  id          String    @id @default(uuid()) @db.Uuid
+  householdId String    @map("household_id") @db.Uuid
+  /// Stable identity used by the financial rules; the name is editable.
+  key         BucketKey
+  name        String
+  percentage  Decimal   @db.Decimal(5, 2)
+  sortOrder   Int       @map("sort_order")
+  colour      String
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  household  Household  @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  categories Category[]
+  accounts   Account[]
+
+  @@unique([householdId, key])
+  @@index([householdId])
+  @@map("buckets")
+}
+
+model Category {
+  id          String       @id @default(uuid()) @db.Uuid
+  householdId String       @map("household_id") @db.Uuid
+  /// Null for income categories and groups.
+  bucketId    String?      @map("bucket_id") @db.Uuid
+  /// The group this category sits in. Groups themselves have no parent.
+  parentId    String?      @map("parent_id") @db.Uuid
+  isGroup     Boolean      @default(false) @map("is_group")
+  kind        CategoryKind
+  name        String
+  isActive    Boolean      @default(true) @map("is_active")
+  sortOrder   Int          @default(0) @map("sort_order")
+  /// Seed identifier for system categories the rules depend on (e.g. "interest_and_fees").
+  systemKey   String?      @map("system_key")
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  household   Household    @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  bucket      Bucket?      @relation(fields: [bucketId], references: [id], onDelete: Restrict)
+  parent      Category?    @relation("CategoryGroup", fields: [parentId], references: [id], onDelete: Restrict)
+  children    Category[]   @relation("CategoryGroup")
+
+  splits             TransactionSplit[]
+  budgetItems        BudgetItem[]
+  recurring          RecurringTransaction[]
+  sinkingFunds       SinkingFund[]
+  debts              Debt[]
+  rules              CategorisationRule[]
+
+  // Unique (household_id, parent_id, name) with NULLS NOT DISTINCT is created in SQL.
+  @@unique([householdId, systemKey])
+  @@index([householdId, isActive])
+  @@index([parentId])
+  @@index([bucketId])
+  @@map("categories")
+}
+
+// ─── Accounts and transactions ───────────────────────────────────────────────
+
+model Account {
+  id                  String              @id @default(uuid()) @db.Uuid
+  householdId         String              @map("household_id") @db.Uuid
+  name                String
+  type                AccountType
+  /// Derived from type; stored so SQL can group by it.
+  class               AccountClass
+  institution         String?
+  /// For liabilities this is the amount owed, as a positive number.
+  openingBalanceCents BigInt              @default(0) @map("opening_balance_cents")
+  openingDate         DateTime            @map("opening_date") @db.Date
+  last4               String?             @db.Char(4)
+  bucketTagId         String?             @map("bucket_tag_id") @db.Uuid
+  includeInBudget     Boolean             @default(true) @map("include_in_budget")
+  includeInNetWorth   Boolean             @default(true) @map("include_in_net_worth")
+  repaymentTreatment  RepaymentTreatment? @map("repayment_treatment")
+  offsetForAccountId  String?             @map("offset_for_account_id") @db.Uuid
+  notes               String?
+  isClosed            Boolean             @default(false) @map("is_closed")
+  sortOrder           Int                 @default(0) @map("sort_order")
+  createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  household       Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  bucketTag       Bucket?       @relation(fields: [bucketTagId], references: [id], onDelete: SetNull)
+  offsetFor       Account?      @relation("Offset", fields: [offsetForAccountId], references: [id], onDelete: SetNull)
+  offsets         Account[]     @relation("Offset")
+  transactionsOut Transaction[] @relation("FromAccount")
+  transactionsIn  Transaction[] @relation("ToAccount")
+  recurringOut    RecurringTransaction[] @relation("RecurringFromAccount")
+  recurringIn     RecurringTransaction[] @relation("RecurringToAccount")
+  sinkingFunds    SinkingFund[]
+  goals           FinancialGoal[]
+  debt            Debt?
+  importProfiles  ImportProfile[]
+  importBatches   ImportBatch[]
+  rules           CategorisationRule[] @relation("RuleAccount")
+  ruleTargets     CategorisationRule[] @relation("RuleTargetAccount")
+
+  @@index([householdId, isClosed])
+  @@map("accounts")
+}
+
+model Transaction {
+  id             String               @id @default(uuid()) @db.Uuid
+  householdId    String               @map("household_id") @db.Uuid
+  date           DateTime             @db.Date
+  description    String
+  payee          String?
+  /// Always positive. Type and accounts decide direction.
+  amountCents    BigInt               @map("amount_cents")
+  type           TransactionType
+  /// Balance adjustments only: whether the account's balance goes up or down.
+  direction      AdjustmentDirection?
+  accountId      String               @map("account_id") @db.Uuid
+  toAccountId    String?              @map("to_account_id") @db.Uuid
+  recurringId    String?              @map("recurring_id") @db.Uuid
+  occurrenceDate DateTime?            @map("occurrence_date") @db.Date
+  goalId         String?              @map("goal_id") @db.Uuid
+  importBatchId  String?              @map("import_batch_id") @db.Uuid
+  fingerprint    String?
+  cleared        Boolean              @default(false)
+  gstCents       BigInt?              @map("gst_cents")
+  notes          String?
+  createdById    String?              @map("created_by") @db.Uuid
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  household   Household             @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  account     Account               @relation("FromAccount", fields: [accountId], references: [id], onDelete: Restrict)
+  toAccount   Account?              @relation("ToAccount", fields: [toAccountId], references: [id], onDelete: Restrict)
+  recurring   RecurringTransaction? @relation(fields: [recurringId], references: [id], onDelete: SetNull)
+  goal        FinancialGoal?        @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  importBatch ImportBatch?          @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+  createdBy   User?                 @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  splits      TransactionSplit[]
+
+  @@unique([accountId, fingerprint])
+  @@unique([recurringId, occurrenceDate])
+  @@index([householdId, date])
+  @@index([householdId, accountId, date])
+  @@index([toAccountId])
+  @@index([importBatchId])
+  @@map("transactions")
+}
+
+model TransactionSplit {
+  id                   String   @id @default(uuid()) @db.Uuid
+  householdId          String   @map("household_id") @db.Uuid
+  transactionId        String   @map("transaction_id") @db.Uuid
+  categoryId           String   @map("category_id") @db.Uuid
+  amountCents          BigInt   @map("amount_cents")
+  /// Paid from a sinking fund: kept in history, excluded from period variance.
+  isSinkingFundPayment Boolean  @default(false) @map("is_sinking_fund_payment")
+  /// Debt repayments: true for the part above the minimum (Fire Extinguisher).
+  isExtraRepayment     Boolean  @default(false) @map("is_extra_repayment")
+  sinkingFundId        String?  @map("sinking_fund_id") @db.Uuid
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  household   Household    @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  transaction Transaction  @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  category    Category     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  sinkingFund SinkingFund? @relation(fields: [sinkingFundId], references: [id], onDelete: SetNull)
+
+  @@index([categoryId])
+  @@index([transactionId])
+  @@index([householdId])
+  @@map("transaction_splits")
+}
+
+// ─── Budgets ─────────────────────────────────────────────────────────────────
+
+model Budget {
+  id          String           @id @default(uuid()) @db.Uuid
+  householdId String           @map("household_id") @db.Uuid
+  name        String
+  periodType  BudgetPeriodType @map("period_type")
+  anchorDate  DateTime         @map("anchor_date") @db.Date
+  isActive    Boolean          @default(false) @map("is_active")
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  household Household    @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  items     BudgetItem[]
+
+  @@index([householdId])
+  @@map("budgets")
+}
+
+model BudgetItem {
+  id               String    @id @default(uuid()) @db.Uuid
+  householdId      String    @map("household_id") @db.Uuid
+  budgetId         String    @map("budget_id") @db.Uuid
+  categoryId       String    @map("category_id") @db.Uuid
+  amountCents      BigInt    @map("amount_cents")
+  enteredFrequency Frequency @map("entered_frequency")
+  frequencyInterval Int?     @map("frequency_interval")
+  notes            String?
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  budget    Budget    @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  category  Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@unique([budgetId, categoryId])
+  @@index([householdId])
+  @@map("budget_items")
+}
+
+// ─── Recurring schedules ─────────────────────────────────────────────────────
+
+model RecurringTransaction {
+  id                String        @id @default(uuid()) @db.Uuid
+  householdId       String        @map("household_id") @db.Uuid
+  name              String
+  type              RecurringType
+  amountCents       BigInt        @map("amount_cents")
+  amountKind        AmountKind    @default(FIXED) @map("amount_kind")
+  frequency         Frequency
+  /// N for the EVERY_N_* frequencies.
+  interval          Int?
+  startDate         DateTime      @map("start_date") @db.Date
+  endDate           DateTime?     @map("end_date") @db.Date
+  occurrenceCount   Int?          @map("occurrence_count")
+  weekendRule       WeekendRule   @default(NONE) @map("weekend_rule")
+  autoPost          Boolean       @default(false) @map("auto_post")
+  accountId         String        @map("account_id") @db.Uuid
+  toAccountId       String?       @map("to_account_id") @db.Uuid
+  categoryId        String?       @map("category_id") @db.Uuid
+  payee             String?
+  notes             String?
+  isActive          Boolean       @default(true) @map("is_active")
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  household    Household            @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  account      Account              @relation("RecurringFromAccount", fields: [accountId], references: [id], onDelete: Restrict)
+  toAccount    Account?             @relation("RecurringToAccount", fields: [toAccountId], references: [id], onDelete: Restrict)
+  category     Category?            @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  exceptions   RecurringException[]
+  transactions Transaction[]
+  sinkingFunds SinkingFund[]
+
+  @@index([householdId, isActive])
+  @@map("recurring_transactions")
+}
+
+model RecurringException {
+  id                  String          @id @default(uuid()) @db.Uuid
+  householdId         String          @map("household_id") @db.Uuid
+  recurringId         String          @map("recurring_id") @db.Uuid
+  occurrenceDate      DateTime        @map("occurrence_date") @db.Date
+  action              ExceptionAction
+  overrideAmountCents BigInt?         @map("override_amount_cents")
+  overrideDate        DateTime?       @map("override_date") @db.Date
+  createdAt           DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  household Household            @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  recurring RecurringTransaction @relation(fields: [recurringId], references: [id], onDelete: Cascade)
+
+  @@unique([recurringId, occurrenceDate])
+  @@index([householdId])
+  @@map("recurring_exceptions")
+}
+
+// ─── Fire Extinguisher ───────────────────────────────────────────────────────
+
+model SinkingFund {
+  id                     String    @id @default(uuid()) @db.Uuid
+  householdId            String    @map("household_id") @db.Uuid
+  name                   String
+  targetCents            BigInt    @map("target_cents")
+  /// Used only when no account is linked and no contributions are recorded.
+  manualCurrentCents     BigInt?   @map("manual_current_cents")
+  dueDate                DateTime  @map("due_date") @db.Date
+  contributionFrequency  Frequency @map("contribution_frequency")
+  contributionInterval   Int?      @map("contribution_interval")
+  accountId              String?   @map("account_id") @db.Uuid
+  categoryId             String?   @map("category_id") @db.Uuid
+  recurringId            String?   @map("recurring_id") @db.Uuid
+  repeats                Boolean   @default(true)
+  isActive               Boolean   @default(true) @map("is_active")
+  notes                  String?
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  household Household             @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  account   Account?              @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  category  Category?             @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  recurring RecurringTransaction? @relation(fields: [recurringId], references: [id], onDelete: SetNull)
+  payments  TransactionSplit[]
+
+  @@index([householdId, isActive])
+  @@map("sinking_funds")
+}
+
+model FinancialGoal {
+  id                    String     @id @default(uuid()) @db.Uuid
+  householdId           String     @map("household_id") @db.Uuid
+  name                  String
+  type                  GoalType
+  targetCents           BigInt     @map("target_cents")
+  manualCurrentCents    BigInt?    @map("manual_current_cents")
+  targetDate            DateTime?  @map("target_date") @db.Date
+  priority              Int        @default(0)
+  accountId             String?    @map("account_id") @db.Uuid
+  contributionCents     BigInt?    @map("contribution_cents")
+  contributionFrequency Frequency? @map("contribution_frequency")
+  contributionInterval  Int?       @map("contribution_interval")
+  isActive              Boolean    @default(true) @map("is_active")
+  notes                 String?
+  createdAt             DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  household    Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  account      Account?      @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  transactions Transaction[]
+
+  @@index([householdId, isActive])
+  @@map("financial_goals")
+}
+
+model Debt {
+  id                    String    @id @default(uuid()) @db.Uuid
+  householdId           String    @map("household_id") @db.Uuid
+  accountId             String    @unique @map("account_id") @db.Uuid
+  originalBalanceCents  BigInt    @map("original_balance_cents")
+  /// Annual percentage, e.g. 6.2500.
+  annualRate            Decimal   @map("annual_rate") @db.Decimal(7, 4)
+  minRepaymentCents     BigInt    @map("min_repayment_cents")
+  repaymentFrequency    Frequency @map("repayment_frequency")
+  repaymentInterval     Int?      @map("repayment_interval")
+  extraRepaymentCents   BigInt    @default(0) @map("extra_repayment_cents")
+  dueDay                Int?      @map("due_day") @db.SmallInt
+  startDate             DateTime? @map("start_date") @db.Date
+  /// Bills category the minimum part of a repayment is assigned to.
+  categoryId            String?   @map("category_id") @db.Uuid
+  /// HECS/HELP: indexed annually instead of charged interest.
+  indexationOnly        Boolean   @default(false) @map("indexation_only")
+  includeInPayoff       Boolean   @default(true) @map("include_in_payoff")
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  account   Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  category  Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([householdId])
+  @@map("debts")
+}
+
+// ─── Net worth ───────────────────────────────────────────────────────────────
+
+model Asset {
+  id          String    @id @default(uuid()) @db.Uuid
+  householdId String    @map("household_id") @db.Uuid
+  name        String
+  type        AssetType
+  includeInNetWorth Boolean @default(true) @map("include_in_net_worth")
+  isActive    Boolean   @default(true) @map("is_active")
+  notes       String?
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  household  Household        @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  valuations AssetValuation[]
+
+  @@index([householdId])
+  @@map("assets")
+}
+
+model AssetValuation {
+  id          String   @id @default(uuid()) @db.Uuid
+  householdId String   @map("household_id") @db.Uuid
+  assetId     String   @map("asset_id") @db.Uuid
+  date        DateTime @db.Date
+  valueCents  BigInt   @map("value_cents")
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  asset     Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([assetId, date])
+  @@index([householdId])
+  @@map("asset_valuations")
+}
+
+model NetWorthSnapshot {
+  id               String   @id @default(uuid()) @db.Uuid
+  householdId      String   @map("household_id") @db.Uuid
+  date             DateTime @db.Date
+  assetsCents      BigInt   @map("assets_cents")
+  liabilitiesCents BigInt   @map("liabilities_cents")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, date])
+  @@map("net_worth_snapshots")
+}
+
+// ─── Import and rules ────────────────────────────────────────────────────────
+
+model CategorisationRule {
+  id               String          @id @default(uuid()) @db.Uuid
+  householdId      String          @map("household_id") @db.Uuid
+  name             String?
+  priority         Int
+  matchField       RuleMatchField  @map("match_field")
+  matchType        RuleMatchType   @map("match_type")
+  /// Plain text, matched case-insensitively. Never a regex.
+  matchValue       String          @map("match_value")
+  minAmountCents   BigInt?         @map("min_amount_cents")
+  maxAmountCents   BigInt?         @map("max_amount_cents")
+  direction        RuleDirection   @default(ANY)
+  accountId        String?         @map("account_id") @db.Uuid
+  setCategoryId    String?         @map("set_category_id") @db.Uuid
+  setType          TransactionType? @map("set_type")
+  setToAccountId   String?         @map("set_to_account_id") @db.Uuid
+  setPayee         String?         @map("set_payee")
+  addNote          String?         @map("add_note")
+  isActive         Boolean         @default(true) @map("is_active")
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  account     Account?  @relation("RuleAccount", fields: [accountId], references: [id], onDelete: Cascade)
+  setCategory Category? @relation(fields: [setCategoryId], references: [id], onDelete: SetNull)
+  setToAccount Account? @relation("RuleTargetAccount", fields: [setToAccountId], references: [id], onDelete: SetNull)
+
+  @@index([householdId, isActive])
+  @@map("categorisation_rules")
+}
+
+model ImportProfile {
+  id             String         @id @default(uuid()) @db.Uuid
+  householdId    String         @map("household_id") @db.Uuid
+  accountId      String         @map("account_id") @db.Uuid
+  name           String
+  delimiter      String         @default(",")
+  hasHeader      Boolean        @default(true) @map("has_header")
+  dateFormat     String         @default("DD/MM/YYYY") @map("date_format")
+  signConvention SignConvention @default(NEGATIVE_IS_DEBIT) @map("sign_convention")
+  dateColumn        Int         @map("date_column")
+  descriptionColumn Int         @map("description_column")
+  amountColumn      Int?        @map("amount_column")
+  debitColumn       Int?        @map("debit_column")
+  creditColumn      Int?        @map("credit_column")
+  balanceColumn     Int?        @map("balance_column")
+  payeeColumn       Int?        @map("payee_column")
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  account   Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId])
+  @@index([householdId])
+  @@map("import_profiles")
+}
+
+model ImportBatch {
+  id            String            @id @default(uuid()) @db.Uuid
+  householdId   String            @map("household_id") @db.Uuid
+  accountId     String            @map("account_id") @db.Uuid
+  fileName      String            @map("file_name")
+  rowCount      Int               @map("row_count")
+  importedCount Int               @map("imported_count")
+  status        ImportBatchStatus @default(COMMITTED)
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  household    Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  account      Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([householdId])
+  @@map("import_batches")
+}
+
+// ─── Notifications ───────────────────────────────────────────────────────────
+
+model Notification {
+  id          String           @id @default(uuid()) @db.Uuid
+  householdId String           @map("household_id") @db.Uuid
+  type        NotificationType
+  subjectId   String           @map("subject_id")
+  periodKey   String           @map("period_key")
+  title       String
+  body        String
+  link        String?
+  readAt      DateTime?        @map("read_at") @db.Timestamptz(3)
+  emailedAt   DateTime?        @map("emailed_at") @db.Timestamptz(3)
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, type, subjectId, periodKey])
+  @@index([householdId, readAt])
+  @@map("notifications")
+}
+
+model NotificationSetting {
+  id           String           @id @default(uuid()) @db.Uuid
+  householdId  String           @map("household_id") @db.Uuid
+  type         NotificationType
+  enabled      Boolean          @default(true)
+  daysBefore   Int?             @map("days_before")
+  emailEnabled Boolean          @default(false) @map("email_enabled")
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, type])
+  @@map("notification_settings")
+}
