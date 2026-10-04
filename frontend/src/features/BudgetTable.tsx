@@ -1,0 +1,174 @@
+import { Fragment } from 'react';
+import type { BudgetItem, BudgetLine, BudgetSummary, Variance } from '../api/types';
+import { Money } from '../components/Money';
+import { ProgressBar } from '../components/Progress';
+
+function Cells({ v, label }: { v: Variance; label: string }) {
+  return (
+    <>
+      <td className="right num">
+        <Money cents={v.budgetCents} />
+      </td>
+      <td className="right num">
+        <Money cents={v.actualCents} />
+      </td>
+      <td className="right num num-remaining">
+        <span className={v.remainingCents < 0 ? 'neg' : undefined}>
+          <Money cents={v.remainingCents} />
+        </span>
+      </td>
+      <td className="progress-cell">
+        <ProgressBar percent={v.percentUsed} status={v.status} label={label} />
+      </td>
+    </>
+  );
+}
+
+/**
+ * Budget vs actual by bucket → group → category (spec §9). Every number comes
+ * from the summary API; this component only lays them out.
+ */
+export function BudgetTable({
+  summary,
+  bucketKey,
+  onEditLine,
+}: {
+  summary: BudgetSummary;
+  bucketKey?: string;
+  onEditLine?: (line: BudgetLine, item: BudgetItem | undefined) => void;
+}) {
+  const items = new Map(summary.budget.items.map((i) => [i.categoryId, i]));
+  const buckets = summary.buckets.filter((b) => !bucketKey || b.key === bucketKey);
+
+  return (
+    <>
+      <div className="table-wrap">
+        <table className="table budget-table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th className="right">Budget</th>
+              <th className="right">Actual</th>
+              <th className="right">Remaining</th>
+              <th>Used</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {buckets.map((b) => (
+              <Fragment key={b.bucketId}>
+                <tr className="bucket-row">
+                  <td>
+                    <span className="row" style={{ gap: '0.5rem' }}>
+                      <span className="dot" style={{ background: b.colour }} aria-hidden="true" />
+                      {b.name}
+                    </span>
+                    <div className="small muted" style={{ fontWeight: 400 }}>
+                      Allocation <Money cents={b.allocatedCents} /> ({b.percentage.replace(/\.00$/, '')}%)
+                      {b.overAllocatedCents > 0 ? (
+                        <span className="warn-text">
+                          {' '}
+                          · over-allocated by <Money cents={b.overAllocatedCents} />
+                        </span>
+                      ) : null}
+                    </div>
+                  </td>
+                  <Cells v={b} label={`${b.name} total used`} />
+                  <td />
+                </tr>
+                {b.groups.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="muted small" style={{ paddingLeft: '1.5rem' }}>
+                      Nothing planned or spent yet.
+                    </td>
+                  </tr>
+                ) : null}
+                {b.groups.map((g) => (
+                  <Fragment key={`${b.bucketId}-${g.groupId ?? 'other'}`}>
+                    {b.groups.length > 1 || g.name !== b.name ? (
+                      <tr className="group-row">
+                        <td>{g.name}</td>
+                        <Cells v={g} label={`${g.name} used`} />
+                        <td />
+                      </tr>
+                    ) : null}
+                    {g.lines.map((l) => {
+                      const item = items.get(l.categoryId);
+                      return (
+                        <tr key={l.categoryId} className={`line-row status-${l.status}`}>
+                          <td>
+                            {onEditLine ? (
+                              <button type="button" className="link-btn" onClick={() => onEditLine(l, item)} aria-label={`Edit budget for ${l.name}`}>
+                                {l.name}
+                              </button>
+                            ) : (
+                              l.name
+                            )}
+                          </td>
+                          <Cells v={l} label={`${l.name} used`} />
+                          <td className="small muted" style={{ maxWidth: 220 }}>
+                            <span className="truncate" style={{ display: 'block' }}>
+                              {item?.notes ?? ''}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </Fragment>
+                ))}
+              </Fragment>
+            ))}
+            {!bucketKey ? (
+              <tr className="total-row">
+                <td>Total</td>
+                <Cells v={summary.total} label="Total used" />
+                <td />
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="budget-lines-mobile">
+        {buckets.map((b) => (
+          <section key={b.bucketId} className="stack-sm" style={{ marginBottom: '1rem' }}>
+            <div className="row">
+              <span className="dot" style={{ background: b.colour }} aria-hidden="true" />
+              <h3>{b.name}</h3>
+              <span className="spacer" />
+              <span className="small">
+                <Money cents={b.actualCents} /> of <Money cents={b.budgetCents} />
+              </span>
+            </div>
+            {b.overAllocatedCents > 0 ? (
+              <p className="small warn-text">
+                Over-allocated by <Money cents={b.overAllocatedCents} />
+              </p>
+            ) : null}
+            {b.groups.flatMap((g) => g.lines).map((l) => (
+              <button
+                key={l.categoryId}
+                type="button"
+                className="card stack-sm"
+                style={{ textAlign: 'left', padding: '0.75rem', cursor: onEditLine ? 'pointer' : undefined }}
+                onClick={() => onEditLine?.(l, items.get(l.categoryId))}
+              >
+                <div className="row">
+                  <strong>{l.name}</strong>
+                  <span className="spacer" />
+                  <span className={`small ${l.remainingCents < 0 ? 'neg' : 'muted'}`}>
+                    <Money cents={Math.abs(l.remainingCents)} /> {l.remainingCents < 0 ? 'over' : 'left'}
+                  </span>
+                </div>
+                <div className="small muted">
+                  <Money cents={l.actualCents} /> of <Money cents={l.budgetCents} />
+                </div>
+                <ProgressBar percent={l.percentUsed} status={l.status} label={`${l.name} used`} />
+              </button>
+            ))}
+          </section>
+        ))}
+      </div>
+    </>
+  );
+}

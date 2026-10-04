@@ -108,3 +108,13 @@ describe('accounts', () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe('balances before the opening date', () => {
+  it('do not include the opening balance yet', async () => {
+    const { client } = await registerUser(app);
+    const main = await createAccount(client, { name: 'Main', type: 'TRANSACTION', openingBalanceCents: 50000, openingDate: '2026-09-15' });
+    const res = await client.get(`/api/accounts/${main.id}/balance-history?from=2026-09-01&to=2026-09-30`);
+    expect(res.body.points[0]).toEqual({ date: '2026-09-01', balanceCents: 0 });
+    expect(res.body.points.at(-1)).toEqual({ date: '2026-09-30', balanceCents: 50000 });
+  });
+});

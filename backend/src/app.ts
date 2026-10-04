@@ -18,6 +18,9 @@ import { bucketRoutes } from './routes/buckets.js';
 import { categoryRoutes } from './routes/categories.js';
 import { accountRoutes } from './routes/accounts.js';
 import { transactionRoutes } from './routes/transactions.js';
+import { budgetRoutes } from './routes/budgets.js';
+import { recurringRoutes } from './routes/recurring.js';
+import { dashboardRoutes } from './routes/dashboard.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -81,6 +84,9 @@ export async function buildApp(opts: BuildOptions): Promise<FastifyInstance> {
         await protectedApi.register(categoryRoutes(services));
         await protectedApi.register(accountRoutes(services));
         await protectedApi.register(transactionRoutes(services));
+        await protectedApi.register(budgetRoutes(services));
+        await protectedApi.register(recurringRoutes(services));
+        await protectedApi.register(dashboardRoutes(services));
       });
     },
     { prefix: '/api' },

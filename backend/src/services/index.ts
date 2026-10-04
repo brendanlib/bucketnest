@@ -5,15 +5,25 @@ import { createBucketService } from './bucket.service.js';
 import { createCategoryService } from './category.service.js';
 import { createAccountService } from './account.service.js';
 import { createTransactionService } from './transaction.service.js';
+import { createRecurringService } from './recurring.service.js';
+import { createBudgetService } from './budget.service.js';
+import { createDashboardService } from './dashboard.service.js';
 
 export function createServices(deps: Deps) {
+  const transactions = createTransactionService(deps);
+  const accounts = createAccountService(deps);
+  const budgets = createBudgetService(deps);
+  const recurring = createRecurringService(deps, transactions);
   return {
     auth: createAuthService(deps),
     settings: createSettingsService(deps),
     buckets: createBucketService(deps),
     categories: createCategoryService(deps),
-    accounts: createAccountService(deps),
-    transactions: createTransactionService(deps),
+    accounts,
+    transactions,
+    budgets,
+    recurring,
+    dashboard: createDashboardService(deps, { budgets, recurring, accounts, transactions }),
   };
 }
 

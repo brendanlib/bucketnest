@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { api, qs } from './client';
-import type { Account, BalanceHistory, Bucket, Category, Me, Page, SessionInfo, Settings, Transaction } from './types';
+import type { Account, BalanceHistory, Bucket, Budget, BudgetSummary, Category, Dashboard, Me, Occurrence, Page, Recurring, SessionInfo, Settings, Transaction } from './types';
 
 export const keys = {
   me: ['me'] as const,
@@ -13,6 +13,11 @@ export const keys = {
   balanceHistory: (id: string, from?: string, to?: string) => ['accounts', id, 'history', { from, to }] as const,
   transactions: (params: Record<string, unknown>) => ['transactions', params] as const,
   sessions: ['sessions'] as const,
+  budgets: ['budgets'] as const,
+  budgetSummary: (id: string, period?: string, includeEmpty?: boolean) => ['budgets', id, 'summary', { period, includeEmpty }] as const,
+  recurring: ['recurring'] as const,
+  occurrences: (from: string, to: string) => ['recurring', 'occurrences', { from, to }] as const,
+  dashboard: (period?: string, basis?: string) => ['dashboard', { period, basis }] as const,
 };
 
 export const useMe = () => useQuery({ queryKey: keys.me, queryFn: () => api.get<Me>('/auth/me'), retry: false, staleTime: 60_000 });
@@ -73,4 +78,23 @@ export function useApiMutation<TVars, TResult = unknown>(fn: (vars: TVars) => Pr
   });
 }
 
-export const MONEY_QUERIES: QueryKey[] = [['transactions'], ['accounts'], ['categories'], ['dashboard'], ['budgets']];
+export const useBudgets = () => useQuery({ queryKey: keys.budgets, queryFn: async () => (await api.get<{ items: Budget[] }>('/budgets')).items });
+export const useBudgetSummary = (id: string | undefined, period?: string, includeEmpty?: boolean) =>
+  useQuery({
+    queryKey: keys.budgetSummary(id ?? '', period, includeEmpty),
+    queryFn: () => api.get<BudgetSummary>(`/budgets/${id}/summary${qs({ period, includeEmpty })}`),
+    enabled: Boolean(id),
+    placeholderData: (prev) => prev,
+  });
+export const useRecurring = () =>
+  useQuery({ queryKey: keys.recurring, queryFn: async () => (await api.get<{ items: Recurring[] }>('/recurring-transactions?includeInactive=true')).items });
+export const useOccurrences = (from: string, to: string) =>
+  useQuery({
+    queryKey: keys.occurrences(from, to),
+    queryFn: async () => (await api.get<{ items: Occurrence[] }>(`/recurring-transactions/occurrences${qs({ from, to })}`)).items,
+  });
+export const useDashboard = (period?: string, basis?: 'PLANNED' | 'ACTUAL') =>
+  useQuery({ queryKey: keys.dashboard(period, basis), queryFn: () => api.get<Dashboard>(`/dashboard${qs({ period, basis })}`), placeholderData: (prev) => prev });
+
+/** Anything that moves money can change balances, budgets, the dashboard and occurrence status. */
+export const MONEY_QUERIES: QueryKey[] = [['transactions'], ['accounts'], ['categories'], ['dashboard'], ['budgets'], ['recurring']];

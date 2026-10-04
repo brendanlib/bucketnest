@@ -253,3 +253,40 @@ table.table { width: 100%; border-collapse: collapse; }
 .auth-wrap { min-height: 100%; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
 .auth-card { width: 100%; max-width: 420px; }
 .auth-card .brand { justify-content: center; margin-bottom: 1.25rem; font-size: 1.2rem; }
+
+/* ── Phase 2: budgets and dashboard ─────────────────── */
+.progress.status-ok > span { background: var(--success); }
+.progress.status-amber > span { background: var(--warning); }
+.progress.status-red > span { background: var(--danger); }
+.progress.status-unbudgeted > span { background: repeating-linear-gradient(45deg, var(--warning), var(--warning) 6px, transparent 6px, transparent 12px); }
+.progress.status-none > span { background: var(--border); }
+.warn-text { color: var(--warning); }
+.bucket-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
+.mini-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem 1rem; margin: 0.25rem 0 0; }
+.mini-stats dt { color: var(--text-3); }
+.mini-stats dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.dash-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; }
+@media (max-width: 1000px) { .dash-grid { grid-template-columns: 1fr; } }
+.budget-table td, .budget-table th { padding: 0.45rem 0.6rem; }
+.budget-table .bucket-row td { background: var(--surface-2); font-weight: 700; border-top: 2px solid var(--border); }
+.budget-table .group-row td { font-weight: 600; color: var(--text-2); }
+.budget-table .line-row td:first-child { padding-left: 1.5rem; }
+.budget-table .total-row td { font-weight: 700; border-top: 2px solid var(--text-3); }
+.budget-table .progress-cell { min-width: 140px; }
+.budget-table tr.status-red td.num-remaining { color: var(--danger); font-weight: 650; }
+.budget-lines-mobile { display: none; }
+@media (max-width: 760px) {
+  .budget-table { display: none; }
+  .budget-lines-mobile { display: block; }
+}
+.occurrence-status { display: inline-flex; align-items: center; gap: 0.3rem; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 0.35rem 1rem; margin: 0; }
+.kv dt { color: var(--text-3); }
+.kv dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+
+.occurrence-actions { display: inline-flex; gap: 0.3rem; align-items: center; flex-wrap: nowrap; vertical-align: middle; }
+.bill-row { flex-wrap: wrap; }
+@media (max-width: 640px) {
+  .bill-row .grow { flex-basis: 60%; }
+  .bill-row .occurrence-actions { flex-basis: 100%; }
+}

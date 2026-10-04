@@ -1,10 +1,11 @@
 import type { Account, Category, Debt, Prisma, TransactionType } from '@prisma/client';
 import type { Deps } from './context.js';
+import type { DbTx } from '../db.js';
 import * as repo from '../repositories/transactions.js';
 import { findAccountsByIds } from '../repositories/accounts.js';
 import { findCategoriesByIds, findCategoryBySystemKey } from '../repositories/categories.js';
 import { listBuckets } from '../repositories/buckets.js';
-import { notFound, validationError } from '../lib/errors.js';
+import { conflict, notFound, validationError } from '../lib/errors.js';
 import { cents, centsOrNull, dateIn, dateOut, dateOutOrNull } from '../lib/serialize.js';
 import { splitDebtRepayment } from '../finance/repayment.js';
 import { SYSTEM_CATEGORY } from '../seed/defaults.js';
@@ -277,6 +278,26 @@ export function createTransactionService(deps: Deps) {
     return requested.map((s) => ({ categoryId: s.categoryId, amountCents: s.amountCents, isSinkingFundPayment: s.isSinkingFundPayment }));
   }
 
+  /**
+   * Deleting a transaction that an auto-post schedule created records a skip,
+   * so the daily job does not post the occurrence again.
+   */
+  async function skipAutoPosted(tx: DbTx, householdId: string, list: { recurringId: string | null; occurrenceDate: Date | null }[]) {
+    const linked = list.filter((t) => t.recurringId && t.occurrenceDate);
+    if (!linked.length) return;
+    const autoPost = new Set(
+      (await tx.recurringTransaction.findMany({ where: { householdId, id: { in: linked.map((t) => t.recurringId!) }, autoPost: true }, select: { id: true } })).map((r) => r.id),
+    );
+    for (const t of linked) {
+      if (!autoPost.has(t.recurringId!)) continue;
+      await tx.recurringException.upsert({
+        where: { recurringId_occurrenceDate: { recurringId: t.recurringId!, occurrenceDate: t.occurrenceDate! } },
+        create: { householdId, recurringId: t.recurringId!, occurrenceDate: t.occurrenceDate!, action: 'SKIP' },
+        update: { action: 'SKIP', overrideAmountCents: null, overrideDate: null },
+      });
+    }
+  }
+
   async function loadOrThrow(householdId: string, id: string) {
     const t = await repo.findTransaction(db, householdId, id);
     if (!t) throw notFound('Transaction');
@@ -311,10 +332,25 @@ export function createTransactionService(deps: Deps) {
       return serializeTransaction(await loadOrThrow(householdId, id));
     },
 
-    async create(householdId: string, userId: string, input: TransactionInput) {
+    /** Creates a transaction; `link` ties it to a recurring occurrence (posting is idempotent). */
+    async create(householdId: string, userId: string | null, input: TransactionInput, link?: { recurringId: string; occurrenceDate: string }) {
       const { data, splits } = await prepare(householdId, input);
-      const created = await db.$transaction((tx) => repo.createTransaction(tx, householdId, { ...data, createdById: userId }, splits));
-      return this.get(householdId, created.id);
+      try {
+        const created = await db.$transaction((tx) =>
+          repo.createTransaction(
+            tx,
+            householdId,
+            { ...data, createdById: userId, ...(link ? { recurringId: link.recurringId, occurrenceDate: dateIn(link.occurrenceDate) } : {}) },
+            splits,
+          ),
+        );
+        return this.get(householdId, created.id);
+      } catch (err) {
+        if (link && err && typeof err === 'object' && 'code' in err && (err as { code: string }).code === 'P2002') {
+          throw conflict('ALREADY_POSTED', 'This occurrence is already recorded');
+        }
+        throw err;
+      }
     },
 
     async update(householdId: string, id: string, input: TransactionInput) {
@@ -325,8 +361,11 @@ export function createTransactionService(deps: Deps) {
     },
 
     async remove(householdId: string, id: string) {
-      await loadOrThrow(householdId, id);
-      await repo.deleteTransactions(db, householdId, [id]);
+      const t = await loadOrThrow(householdId, id);
+      await db.$transaction(async (tx) => {
+        await skipAutoPosted(tx, householdId, [t]);
+        await repo.deleteTransactions(tx, householdId, [id]);
+      });
     },
 
     async bulk(householdId: string, input: { action: 'delete' | 'recategorise'; ids: string[]; categoryId?: string }) {
@@ -335,7 +374,10 @@ export function createTransactionService(deps: Deps) {
       if (found.length !== ids.length) throw notFound('Transaction');
 
       if (input.action === 'delete') {
-        const result = await repo.deleteTransactions(db, householdId, ids);
+        const result = await db.$transaction(async (tx) => {
+          await skipAutoPosted(tx, householdId, found);
+          return repo.deleteTransactions(tx, householdId, ids);
+        });
         return { deleted: result.count, updated: 0, skipped: 0 };
       }
 

@@ -12,6 +12,10 @@ import { AccountDetailPage } from './features/AccountDetailPage';
 import { TransactionsPage } from './features/TransactionsPage';
 import { CategoriesPage } from './features/CategoriesPage';
 import { SettingsPage } from './features/SettingsPage';
+import { DashboardPage } from './features/DashboardPage';
+import { BudgetPage } from './features/BudgetPage';
+import { BillsPage } from './features/BillsPage';
+import { RecurringPage } from './features/RecurringPage';
 
 function RequireAuth() {
   const me = useMe();
@@ -46,7 +50,11 @@ export function App() {
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route element={<RequireAuth />}>
         <Route element={<Layout />}>
-          <Route index element={<Navigate to="/transactions" replace />} />
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/budget" element={<BudgetPage />} />
+          <Route path="/bills" element={<BillsPage />} />
+          <Route path="/recurring" element={<RecurringPage />} />
           <Route path="/transactions" element={<TransactionsPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/accounts/:id" element={<AccountDetailPage />} />

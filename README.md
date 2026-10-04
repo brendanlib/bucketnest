@@ -2,7 +2,7 @@
 
 A self-hosted household budget app built on the Barefoot Investor bucket method: Bills, Smile, Splurge and Fire Extinguisher. It runs on your own server with `docker compose up -d` and keeps everything in PostgreSQL.
 
-> **Build status: Phase 1 of 6 (Foundation).** Accounts, transactions with splits, categories, buckets, settings, and secure login all work. The dashboard, budgets and recurring schedules are Phase 2. See [Roadmap](#roadmap).
+> **Build status: Phase 2 of 6.** Foundation plus budgets, the dashboard, recurring schedules and the Bills page. Sinking funds, goals and debt modelling are Phase 3. See [Roadmap](#roadmap).
 
 ## What works now
 
@@ -18,6 +18,25 @@ A self-hosted household budget app built on the Barefoot Investor bucket method:
   - Argon2id passwords and server-side sessions in HTTP-only cookies, revocable instantly.
   - CSRF tokens, Origin checks, per-IP and per-email rate limits with backoff.
   - A registration switch, strict security headers, and full household isolation.
+- **Dashboard:** one view of the current budget period, stepping back or forward through periods. It shows:
+  - expected income (weekly, fortnightly, monthly and annual) and income received;
+  - a card per bucket with allocated, spent and remaining, plus a progress bar that turns amber and red;
+  - Fire Extinguisher contributions and debt principal reduced;
+  - bills due in the next 14 days, which you can mark paid straight from the dashboard;
+  - a watch list of near-limit and overspent categories;
+  - net worth with a 12-month sparkline;
+  - the uncategorised count.
+- **Budget:**
+  - Plan each category in whatever frequency suits it ($900 a year for rego, $200 a week for groceries). It's converted to the budget period.
+  - Budget vs actual rolls up by group, bucket and total, and spending with no budget line is flagged.
+  - Buckets show "over-allocated by $X" when their plans exceed the allocation.
+  - Keep several budgets, copy one, and choose which is active.
+- **Recurring schedules:**
+  - Pay, bills, repayments, transfers and savings that repeat. They project occurrences but never create future transactions.
+  - Mark paid (pre-filled and editable), skip, edit one occurrence, or edit the series from a date onward.
+  - Auto-post records an occurrence on its day, from 02:00 household time.
+  - Monthly dates keep their day and clamp at month end. Weekend dates can move to the Friday before or the Monday after.
+- **Bills:** every Bills-bucket schedule, with its next due date, fixed or estimate, and what's been paid this period.
 - **Settings:** budget period, display frequency, thresholds, currency, locale, time zone, financial year, theme (light, dark or system).
 
 ## Quick start (Ubuntu server)
@@ -125,7 +144,7 @@ docs/      deployment, backup and restore, data model
 ## Roadmap
 
 1. **Foundation** ✅ Docker Compose, schema, auth and security, buckets and categories, accounts, transactions, finance core.
-2. **Budget and recurring:** budgets and budget vs actual, dashboard, recurring schedules (post, skip, auto-post), Bills page.
+2. **Budget and recurring** ✅ budgets and budget vs actual, dashboard, recurring schedules (post, skip, auto-post), Bills page.
 3. **Fire Extinguisher:** sinking funds, goals, debts with payoff simulation, offsets, extra repayments.
 4. **Insight:** reports, forecast, net worth with valuations and snapshots, calendar.
 5. **Automation:** CSV import with duplicate detection, categorisation rules, notifications, data export.

@@ -75,3 +75,44 @@ These live in SQL in the first migration:
 - the split-sum trigger and the household-match triggers
 
 When generating a future migration with `prisma migrate diff`, check the output doesn't drop the `categories_household_parent_name_key` index, which Prisma doesn't know about.
+
+## Budget periods (spec §3.8, §9)
+
+| Period | Boundaries |
+| --- | --- |
+| Weekly, fortnightly | Repeat every 7 or 14 days from the anchor date. For fortnightly, the anchor is a payday. |
+| Monthly | Start on the anchor's day of the month, clamped at month end (an anchor of the 31st starts on the 28th or 29th in February). |
+| Annual | Start on the anchor's day and month each year. |
+
+- "Today" is the date in the household time zone.
+- Each budget item stores the amount and frequency as entered, and is converted to the period with the §3.2 factors, rounding once.
+- The plan carries into every period automatically. A new period starts with the previous plan because the plan isn't tied to any one period.
+- The active budget's period and anchor mirror the household's budget settings, whichever side changes.
+- Every household always has exactly one active budget. One is created on first use if none exists.
+
+### What's planned and what's actual
+
+- **Planned income:** the household's active income schedules normalised to the period. With no income schedules, the budget's income lines are used instead.
+- **Actual income:** income transactions dated in the period.
+- **Allocation basis:** planned income by default, or income received. Allocations use the largest-remainder method (§3.3).
+- **Actuals:** follow the split rules above. Only accounts with *Include in budget* count, and sinking-fund payments are excluded from variance.
+- **% used and status:**
+  - % used is actual ÷ budget × 100, or "—" when the budget is 0.
+  - The line turns amber at the amber threshold.
+  - It turns red only *above* the red threshold, so exactly 100% used is still amber.
+  - Spending with no budget is flagged unbudgeted.
+- **Over-allocated:** a bucket is over-allocated when its planned lines exceed its allocation.
+
+## Recurring schedules (spec §3.7, §8)
+
+- **Occurrence engine:** `generateOccurrences` in `backend/src/finance/recurrence.ts` is pure. Monthly-style frequencies keep the start day and clamp at month end, so a schedule on the 31st never drifts to the 28th.
+- **Weekend rule:** moves Saturday or Sunday dates to the Friday before or the Monday after. Public holidays are out of scope.
+- **Occurrence identity:** an occurrence is identified by its **nominal** date, the date the pattern gives before any weekend move or edit. Exceptions and posted transactions use that date, and `transactions (recurring_id, occurrence_date)` is unique.
+- **Exceptions:** *skip* hides an occurrence. *Edit* changes its amount and/or date. Both apply after generation.
+- **Editing from a date onward:** the schedule ends the day before that date and a new schedule carries on with the changes. A schedule with a fixed count keeps its total, and occurrences already posted from that date move to the new schedule.
+- **Auto-post:**
+  - A job checks every 15 minutes and posts occurrences once 02:00 household time has passed on their date.
+  - It only posts occurrences dated on or after the day the schedule was created, so it never back-fills history you may have entered yourself.
+  - The job holds a PostgreSQL advisory lock, and the unique key makes reruns harmless.
+- **Deleting an auto-posted transaction:** this records a *skip*, so the job doesn't post the occurrence again.
+- **Where schedules are managed:** the Bills page lists Bills-bucket schedules (expenses in Bills categories, plus debt repayments). Income, transfers and every other schedule are managed on the **Recurring** page. The spec's navigation had no page for them, so Recurring was added under Money.

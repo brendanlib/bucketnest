@@ -129,3 +129,30 @@ export function percentToHundredths(value: string): number | null {
 export function formatHundredths(h: number): string {
   return `${Math.floor(h / 100)}.${String(h % 100).padStart(2, '0')}`;
 }
+
+/** "1 Oct – 31 Oct 2026", or "October 2026" for a calendar month. Display only. */
+export function formatPeriod(start: string, end: string, locale: string): string {
+  const s = new Date(`${start}T00:00:00Z`);
+  const e = new Date(`${end}T00:00:00Z`);
+  const nextDay = new Date(e.getTime() + 86_400_000);
+  if (s.getUTCDate() === 1 && nextDay.getUTCDate() === 1 && nextDay.getUTCMonth() === (s.getUTCMonth() + 1) % 12) {
+    return new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(s);
+  }
+  const sameYear = s.getUTCFullYear() === e.getUTCFullYear();
+  const f = (d: Date, withYear: boolean) =>
+    new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', ...(withYear ? { year: 'numeric' } : {}), timeZone: 'UTC' }).format(d);
+  return `${f(s, !sameYear)} – ${f(e, true)}`;
+}
+
+export function addDaysIso(iso: string, days: number): string {
+  return new Date(Date.parse(`${iso}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
+}
+
+/** "in 3 days", "today", "2 days ago". */
+export function relativeDays(iso: string, today: string): string {
+  const days = Math.round((Date.parse(`${iso}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000);
+  if (days === 0) return 'today';
+  if (days === 1) return 'tomorrow';
+  if (days === -1) return 'yesterday';
+  return days > 0 ? `in ${days} days` : `${-days} days ago`;
+}

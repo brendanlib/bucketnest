@@ -15,11 +15,15 @@ interface NavItem {
 
 /** Only pages that exist are listed; later build phases add Overview and Fire Extinguisher groups. */
 export const NAV: { group: string; items: NavItem[] }[] = [
+  { group: 'Overview', items: [{ to: '/dashboard', label: 'Dashboard', icon: 'dashboard' }] },
   {
     group: 'Money',
     items: [
       { to: '/transactions', label: 'Transactions', icon: 'transactions' },
       { to: '/accounts', label: 'Accounts', icon: 'accounts' },
+      { to: '/budget', label: 'Budget', icon: 'budget' },
+      { to: '/bills', label: 'Bills', icon: 'bills' },
+      { to: '/recurring', label: 'Recurring', icon: 'recurring' },
     ],
   },
   {
@@ -32,9 +36,10 @@ export const NAV: { group: string; items: NavItem[] }[] = [
 ];
 
 const TABS: NavItem[] = [
+  { to: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
   { to: '/transactions', label: 'Transactions', icon: 'transactions' },
-  { to: '/accounts', label: 'Accounts', icon: 'accounts' },
-  { to: '/categories', label: 'Categories', icon: 'categories' },
+  { to: '/budget', label: 'Budget', icon: 'budget' },
+  { to: '/bills', label: 'Bills', icon: 'bills' },
 ];
 
 export function Layout() {

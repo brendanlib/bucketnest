@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { api, ApiError } from '../api/client';
 import { MONEY_QUERIES, useAccounts, useApiMutation, useBuckets, useCategories } from '../api/hooks';
-import type { Account, Transaction, TransactionType } from '../api/types';
+import type { Account, Transaction, TransactionDraft, TransactionType } from '../api/types';
 import { Field } from '../components/Field';
 import { Modal } from '../components/Modal';
 import { MoneyInput } from '../components/MoneyInput';
@@ -28,34 +28,53 @@ interface SplitRow {
 
 let rowKey = 0;
 
-export function TransactionForm({ transaction, defaultAccountId, onClose }: { transaction?: Transaction; defaultAccountId?: string; onClose: () => void }) {
+export function TransactionForm({
+  transaction,
+  draft,
+  defaultAccountId,
+  title,
+  submit,
+  onClose,
+}: {
+  transaction?: Transaction;
+  /** Pre-filled values for a new transaction, e.g. a recurring occurrence being marked paid. */
+  draft?: TransactionDraft;
+  defaultAccountId?: string;
+  title?: string;
+  /** Overrides where the form is sent, e.g. the occurrence post endpoint. */
+  submit?: (body: unknown) => Promise<Transaction>;
+  onClose: () => void;
+}) {
   const { timezone } = useHousehold();
   const accounts = useAccounts(true);
   const categories = useCategories(true);
   const buckets = useBuckets();
   const toast = useToast();
 
-  const [type, setType] = useState<TransactionType>(transaction?.type ?? 'EXPENSE');
+  const [type, setType] = useState<TransactionType>(transaction?.type ?? draft?.type ?? 'EXPENSE');
   const [form, setForm] = useState({
-    date: transaction?.date ?? todayIn(timezone),
-    description: transaction?.description ?? '',
-    payee: transaction?.payee ?? '',
-    amountCents: transaction?.amountCents ?? (null as number | null),
-    accountId: transaction?.accountId ?? defaultAccountId ?? '',
-    toAccountId: transaction?.toAccountId ?? '',
+    date: transaction?.date ?? draft?.date ?? todayIn(timezone),
+    description: transaction?.description ?? draft?.description ?? '',
+    payee: transaction?.payee ?? draft?.payee ?? '',
+    amountCents: transaction?.amountCents ?? draft?.amountCents ?? (null as number | null),
+    accountId: transaction?.accountId ?? draft?.accountId ?? defaultAccountId ?? '',
+    toAccountId: transaction?.toAccountId ?? draft?.toAccountId ?? '',
     direction: transaction?.direction ?? ('INCREASE' as 'INCREASE' | 'DECREASE'),
-    notes: transaction?.notes ?? '',
+    notes: transaction?.notes ?? draft?.notes ?? '',
     cleared: transaction?.cleared ?? false,
   });
   const initialSplits: SplitRow[] = transaction?.splits.length
     ? transaction.splits.filter((s) => !s.isExtraRepayment).map((s) => ({ key: ++rowKey, categoryId: s.categoryId, amountCents: s.amountCents }))
-    : [{ key: ++rowKey, categoryId: '', amountCents: null }];
+    : draft?.splits?.length
+      ? draft.splits.map((s) => ({ key: ++rowKey, categoryId: s.categoryId, amountCents: s.amountCents }))
+      : [{ key: ++rowKey, categoryId: '', amountCents: null }];
   const [splits, setSplits] = useState<SplitRow[]>(initialSplits);
   const [splitMode, setSplitMode] = useState(initialSplits.length > 1);
   const [showOther, setShowOther] = useState(OTHER_TYPES.includes(type));
 
   const save = useApiMutation(
-    (body: unknown) => (transaction ? api.put<Transaction>(`/transactions/${transaction.id}`, body) : api.post<Transaction>('/transactions', body)),
+    (body: unknown) =>
+      submit ? submit(body) : transaction ? api.put<Transaction>(`/transactions/${transaction.id}`, body) : api.post<Transaction>('/transactions', body),
     MONEY_QUERIES,
   );
 
@@ -70,7 +89,7 @@ export function TransactionForm({ transaction, defaultAccountId, onClose }: { tr
 
   if (accounts.isPending || categories.isPending || buckets.isPending) {
     return (
-      <Modal title={transaction ? 'Edit transaction' : 'Add transaction'} onClose={onClose}>
+      <Modal title={title ?? (transaction ? 'Edit transaction' : 'Add transaction')} onClose={onClose}>
         <Loading />
       </Modal>
     );
@@ -78,7 +97,7 @@ export function TransactionForm({ transaction, defaultAccountId, onClose }: { tr
 
   const categoryKind = type === 'INCOME' ? 'INCOME' : 'EXPENSE';
 
-  async function submit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     let bodySplits: { categoryId: string; amountCents: number }[] | undefined;
     if (CATEGORISED.includes(type)) {
@@ -105,7 +124,7 @@ export function TransactionForm({ transaction, defaultAccountId, onClose }: { tr
     };
     try {
       const saved = await save.mutateAsync(body);
-      toast(saved.type !== type ? `Saved as ${strings.transactionTypes[saved.type].toLowerCase()}` : transaction ? 'Transaction saved' : 'Transaction added');
+      toast(saved.type !== type ? `Saved as ${strings.transactionTypes[saved.type].toLowerCase()}` : transaction ? 'Transaction saved' : submit ? 'Recorded' : 'Transaction added');
       onClose();
     } catch {
       /* shown */
@@ -124,7 +143,7 @@ export function TransactionForm({ transaction, defaultAccountId, onClose }: { tr
 
   return (
     <Modal
-      title={transaction ? 'Edit transaction' : 'Add transaction'}
+      title={title ?? (transaction ? 'Edit transaction' : 'Add transaction')}
       onClose={onClose}
       wide
       footer={
@@ -138,7 +157,7 @@ export function TransactionForm({ transaction, defaultAccountId, onClose }: { tr
         </>
       }
     >
-      <form id="tx-form" className="stack" onSubmit={submit} noValidate>
+      <form id="tx-form" className="stack" onSubmit={handleSubmit} noValidate>
         <div className="stack-sm">
           <div className="segmented" role="group" aria-label="Transaction type">
             {(showOther ? [...PRIMARY_TYPES, ...OTHER_TYPES] : PRIMARY_TYPES).map((t) => (

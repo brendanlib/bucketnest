@@ -75,10 +75,14 @@ export function serializeAccount(a: AccountRow, balanceCents: number) {
 export function createAccountService(deps: Deps) {
   const { db } = deps;
 
+  /** Balances as of a date. Before an account's opening date its opening balance does not count yet. */
   async function balancesFor(householdId: string, accounts: Account[], asOf?: Date) {
     const movements = await repo.balanceMovements(db, householdId, { accountIds: accounts.map((a) => a.id), asOf });
     return new Map(
-      accounts.map((a) => [a.id, calculateAccountBalance(cents(a.openingBalanceCents), a.class, movements.get(a.id) ?? [])]),
+      accounts.map((a) => {
+        const opening = asOf && asOf < a.openingDate ? 0 : cents(a.openingBalanceCents);
+        return [a.id, calculateAccountBalance(opening, a.class, movements.get(a.id) ?? [])];
+      }),
     );
   }
 
@@ -201,6 +205,9 @@ export function createAccountService(deps: Deps) {
         const d = dateOut(r.date);
         byDate.set(d, (byDate.get(d) ?? 0) + balanceEffect(r.movement, account.class));
       }
+      // The opening balance starts counting on the opening date.
+      const openedOn = dateOut(account.openingDate);
+      if (openedOn >= from && openedOn <= to) byDate.set(openedOn, (byDate.get(openedOn) ?? 0) + cents(account.openingBalanceCents));
       const points: { date: string; balanceCents: number }[] = [{ date: from, balanceCents: opening + (byDate.get(from) ?? 0) }];
       let running = points[0]!.balanceCents;
       for (const d of [...byDate.keys()].filter((d) => d > from).sort()) {

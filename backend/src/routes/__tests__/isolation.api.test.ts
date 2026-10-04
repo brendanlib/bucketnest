@@ -22,6 +22,10 @@ beforeAll(async () => {
   });
   ids.transaction = tx.body.id;
   ids.session = (await a.get('/api/auth/sessions')).body.items[0].id;
+  ids.budget = (await a.get('/api/budgets')).body.items[0].id;
+  ids.recurring = (await a.post('/api/recurring-transactions', {
+    name: 'A rent', type: 'EXPENSE', amountCents: 100, frequency: 'MONTHLY', startDate: '2026-10-01', accountId: account.id, categoryId: ids.category,
+  })).body.id;
 });
 afterAll(async () => {
   await app.close();
@@ -66,6 +70,31 @@ describe('household isolation', () => {
     const used = await b.post('/api/transactions', { date: '2026-10-01', description: 'x', amountCents: 100, type: 'EXPENSE', accountId: own.id, splits: [{ categoryId: ownCat, amountCents: 100 }] });
     expect(used.status).toBe(201);
     expect((await b.delete(`/api/categories/${ownCat}?reassignTo=${ids.category}`)).status).toBe(400);
+  });
+
+  it('budgets', async () => {
+    expect((await b.get(`/api/budgets/${ids.budget}`)).status).toBe(404);
+    expect((await b.put(`/api/budgets/${ids.budget}`, { name: 'Hijack' })).status).toBe(404);
+    expect((await b.delete(`/api/budgets/${ids.budget}`)).status).toBe(404);
+    expect((await b.get(`/api/budgets/${ids.budget}/summary`)).status).toBe(404);
+    expect((await b.post(`/api/budgets/${ids.budget}/copy`, {})).status).toBe(404);
+    expect((await b.put(`/api/budgets/${ids.budget}/items/${ids.category}`, { amountCents: 1, enteredFrequency: 'MONTHLY' })).status).toBe(404);
+    const own = (await b.get('/api/budgets')).body.items[0].id;
+    expect((await b.put(`/api/budgets/${own}/items/${ids.category}`, { amountCents: 1, enteredFrequency: 'MONTHLY' })).status).toBe(400);
+  });
+
+  it('recurring schedules and occurrences', async () => {
+    const base = `/api/recurring-transactions/${ids.recurring}`;
+    expect((await b.get(base)).status).toBe(404);
+    expect((await b.put(base, { name: 'x', type: 'EXPENSE', amountCents: 1, frequency: 'MONTHLY', startDate: '2026-10-01', accountId: ids.account, categoryId: ids.category })).status).toBe(404);
+    expect((await b.delete(base)).status).toBe(404);
+    expect((await b.post(`${base}/occurrences/2026-10-01/post`)).status).toBe(404);
+    expect((await b.post(`${base}/occurrences/2026-10-01/skip`)).status).toBe(404);
+    expect((await b.put(`${base}/occurrences/2026-10-01`, { amountCents: 5 })).status).toBe(404);
+    expect((await b.get(`${base}/occurrences/2026-10-01/draft`)).status).toBe(404);
+    expect((await b.get('/api/recurring-transactions')).body.items).toEqual([]);
+    expect((await b.get('/api/recurring-transactions/occurrences?from=2026-10-01&to=2026-10-31')).body.items).toEqual([]);
+    expect((await b.get('/api/dashboard')).body.billsDue).toEqual([]);
   });
 
   it('sessions', async () => {

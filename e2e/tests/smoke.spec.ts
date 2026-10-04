@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('register → add account → add transaction → balance updates', async ({ page }, testInfo) => {
+test('register → add account → add transaction → dashboard updates', async ({ page }, testInfo) => {
   const email = `smoke-${testInfo.project.name}-${Date.now()}@example.com`;
 
   await page.goto('/register');
@@ -28,7 +28,12 @@ test('register → add account → add transaction → balance updates', async (
   await page.goto('/accounts');
   await expect(page.getByRole('link', { name: /Everyday/ })).toContainText('$957.50');
 
+  // The dashboard's Bills bucket now shows the spending.
+  await page.goto('/dashboard');
+  const bills = page.getByRole('article', { name: 'Bills' });
+  await expect(bills).toContainText('$42.50');
+
   // Data survives a reload (server-side state, not browser storage).
   await page.reload();
-  await expect(page.getByRole('link', { name: /Everyday/ })).toContainText('$957.50');
+  await expect(page.getByRole('article', { name: 'Bills' })).toContainText('$42.50');
 });

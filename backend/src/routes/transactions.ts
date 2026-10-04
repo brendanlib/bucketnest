@@ -51,7 +51,7 @@ export const TransactionResponse = z.object({
   updatedAt: z.string(),
 });
 
-const TransactionBody = z.strictObject({
+export const TransactionBody = z.strictObject({
   date: DateOnly,
   description: z.string().trim().min(1, 'Enter a description').max(300),
   payee: OptionalText(200),

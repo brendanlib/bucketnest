@@ -93,7 +93,15 @@ export function createSettingsService(deps: Deps) {
       if (input.amberThreshold !== undefined) data.amberThreshold = input.amberThreshold.toFixed(2);
       if (input.redThreshold !== undefined) data.redThreshold = input.redThreshold.toFixed(2);
 
-      return serializeSettings(await updateHousehold(db, householdId, data));
+      const updated = await updateHousehold(db, householdId, data);
+      // The active budget follows the household's budget period settings.
+      if (input.budgetPeriodType !== undefined || input.budgetAnchorDate !== undefined) {
+        await db.budget.updateMany({
+          where: { householdId, isActive: true },
+          data: { periodType: updated.budgetPeriodType, anchorDate: updated.budgetAnchorDate },
+        });
+      }
+      return serializeSettings(updated);
     },
   };
 }
