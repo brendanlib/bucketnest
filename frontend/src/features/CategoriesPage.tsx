@@ -3,6 +3,7 @@ import { api, ApiError } from '../api/client';
 import { useApiMutation, useBuckets, useCategories } from '../api/hooks';
 import type { Bucket, Category } from '../api/types';
 import { PageHeader } from '../components/PageHeader';
+import { PageTip } from '../components/PageTip';
 import { ConfirmDialog, Modal } from '../components/Modal';
 import { ErrorState, FormError, Loading, errorMessage } from '../components/States';
 import { Field } from '../components/Field';
@@ -149,6 +150,9 @@ export function CategoriesPage() {
   return (
     <>
       <PageHeader title="Categories" subtitle="Every expense category belongs to one bucket. You choose categories; the bucket follows." />
+      <PageTip id="categories" title="Categories decide the bucket">
+        Each category belongs to one bucket. Moving a category to another bucket changes past bucket totals too, so you’ll be asked to confirm. Disable categories you don’t use rather than deleting them.
+      </PageTip>
       <div className="stack">
         {buckets.data.map((b) => section(b.name, b.colour, b.id, 'EXPENSE'))}
         {section('Income', null, null, 'INCOME')}

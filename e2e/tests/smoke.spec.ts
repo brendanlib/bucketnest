@@ -8,9 +8,11 @@ test('register → add account → add transaction → dashboard updates', async
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill('correct horse battery staple');
   await page.getByRole('button', { name: 'Create account' }).click();
-  await expect(page).toHaveURL(/\/accounts/);
+  await expect(page).toHaveURL(/\/dashboard/);
 
-  await page.getByRole('button', { name: 'Add account' }).first().click();
+  // First login: the welcome leads straight to adding an account.
+  await page.getByRole('button', { name: 'Add my first account' }).click();
+  await expect(page).toHaveURL(/\/accounts/);
   await page.getByLabel('Name').fill('Everyday');
   await page.getByLabel('Opening balance').fill('1,000.00');
   await page.getByRole('button', { name: 'Save' }).click();

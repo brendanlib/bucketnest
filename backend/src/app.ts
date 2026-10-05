@@ -24,6 +24,7 @@ import { dashboardRoutes } from './routes/dashboard.js';
 import { ruleRoutes } from './routes/rules.js';
 import { importRoutes } from './routes/imports.js';
 import { fireRoutes } from './routes/fire.js';
+import { onboardingRoutes } from './routes/onboarding.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -93,6 +94,7 @@ export async function buildApp(opts: BuildOptions): Promise<FastifyInstance> {
         await protectedApi.register(ruleRoutes(services));
         await protectedApi.register(importRoutes(services));
         await protectedApi.register(fireRoutes(services));
+        await protectedApi.register(onboardingRoutes(services));
       });
     },
     { prefix: '/api' },

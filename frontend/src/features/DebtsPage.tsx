@@ -5,6 +5,7 @@ import { api, ApiError } from '../api/client';
 import { MONEY_QUERIES, useAccounts, useApiMutation, useBuckets, useCategories, useDebts, usePayoff, usePayoffPlan, useSettings } from '../api/hooks';
 import type { Debt, DebtWarning, Frequency } from '../api/types';
 import { PageHeader } from '../components/PageHeader';
+import { PageTip } from '../components/PageTip';
 import { ConfirmDialog, Modal } from '../components/Modal';
 import { EmptyState, ErrorState, FormError, Loading } from '../components/States';
 import { Field } from '../components/Field';
@@ -46,6 +47,9 @@ export function DebtsPage() {
   return (
     <>
       <PageHeader title="Debts" subtitle={ESTIMATE_NOTE} />
+      <PageTip id="debts" title="Paying debt down faster">
+        Repayments up to the minimum count as Bills; anything extra counts as Fire Extinguisher. Try an extra amount on a debt’s payoff plan to see the time and interest it saves. These are estimates — lenders calculate slightly differently.
+      </PageTip>
       {debts.data.length === 0 && missing.length === 0 ? (
         <div className="card">
           <EmptyState title="No debts" action={<Link to="/accounts" className="btn primary">Add a loan or card account</Link>}>

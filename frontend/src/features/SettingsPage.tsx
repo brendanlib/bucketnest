@@ -356,8 +356,26 @@ function describeAgent(ua: string | null): string {
 
 function AppearanceSettings() {
   const [pref, setPref] = useState<ThemePref>(getThemePref);
+  const qc = useQueryClient();
+  const toast = useToast();
   useEffect(() => setThemePref(pref), [pref]);
   return (
+    <>
+    <Card title="Help" description="Bring back the getting-started checklist and the tips at the top of each page.">
+      <div>
+        <button
+          type="button"
+          className="btn"
+          onClick={async () => {
+            await api.post('/me/tips/reset');
+            await Promise.all([qc.invalidateQueries({ queryKey: keys.me }), qc.invalidateQueries({ queryKey: ['onboarding'] })]);
+            toast('Tips are showing again');
+          }}
+        >
+          Show help tips again
+        </button>
+      </div>
+    </Card>
     <Card title="Appearance">
       <div className="segmented" role="group" aria-label="Theme">
         {(['light', 'dark', 'system'] as const).map((p) => (
@@ -367,5 +385,6 @@ function AppearanceSettings() {
         ))}
       </div>
     </Card>
+    </>
   );
 }

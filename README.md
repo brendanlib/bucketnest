@@ -64,6 +64,10 @@ A self-hosted household budget app built on the Barefoot Investor bucket method:
   - Rules run in order and can be tested against recent transactions or applied to uncategorised ones.
   - When you categorise an imported transaction, the app offers to make a rule.
 - **Bills:** every Bills-bucket schedule, with its next due date, fixed or estimate, and what's been paid this period.
+- **Getting started:**
+  - On first login a welcome screen explains the buckets.
+  - A dashboard checklist (accounts, pay, bills, budget, transactions, savings) ticks itself off from your data.
+  - Each main page has a short tip until you dismiss it. Dismissals are saved per user; Settings → Appearance → *Show help tips again* brings them back.
 - **Settings:** budget period, display frequency, thresholds, currency, locale, time zone, financial year, theme (light, dark or system).
 
 ## Quick start (Ubuntu server)

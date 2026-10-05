@@ -3,6 +3,7 @@ import { api, ApiError } from '../api/client';
 import { MONEY_QUERIES, useAccounts, useApiMutation, useBuckets, useCategories, useRecurring, useSinkingFunds } from '../api/hooks';
 import type { Frequency, SinkingFund } from '../api/types';
 import { PageHeader } from '../components/PageHeader';
+import { PageTip } from '../components/PageTip';
 import { ConfirmDialog, Modal } from '../components/Modal';
 import { EmptyState, ErrorState, FormError, Loading } from '../components/States';
 import { Field } from '../components/Field';
@@ -70,6 +71,9 @@ export function SinkingFundsPage() {
           </button>
         }
       />
+      <PageTip id="sinking-funds" title="Smooth out the big bills">
+        A sinking fund saves a little each pay for an irregular bill, so the month it lands isn’t a shock. Its contribution is the budget line; the bill itself, paid from the fund, doesn’t count as overspending.
+      </PageTip>
       {funds.data.length === 0 ? (
         <div className="card">
           <EmptyState

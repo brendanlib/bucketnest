@@ -4,6 +4,7 @@ import { api, ApiError } from '../api/client';
 import { useApiMutation, useBudgets, useBudgetSummary } from '../api/hooks';
 import type { Budget, BudgetItem, BudgetLine, Frequency } from '../api/types';
 import { PageHeader } from '../components/PageHeader';
+import { PageTip } from '../components/PageTip';
 import { ConfirmDialog, Modal } from '../components/Modal';
 import { ErrorState, FormError, Loading, errorMessage } from '../components/States';
 import { Field } from '../components/Field';
@@ -26,7 +27,7 @@ export function BudgetPage() {
   const selectedId = params.get('budget') ?? budgets.data?.find((b) => b.isActive)?.id;
   const period = params.get('period') ?? undefined;
   const bucketKey = params.get('bucket') ?? undefined;
-  const [showAll, setShowAll] = useState(false);
+  const [showAll, setShowAll] = useState(params.get('all') === '1');
   const summary = useBudgetSummary(selectedId, period, showAll);
   const [editing, setEditing] = useState<{ line: BudgetLine; item?: BudgetItem } | null>(null);
   const [managing, setManaging] = useState<'new' | 'edit' | 'copy' | 'delete' | null>(null);
@@ -70,6 +71,9 @@ export function BudgetPage() {
           </>
         }
       />
+      <PageTip id="budget" title="How the budget works">
+        Plan each category in the frequency that suits it — $200 a week for groceries, $900 a year for rego — and it’s converted to your budget period. The plan carries into every period until you change it. Tick “Show every category” to plan the rest.
+      </PageTip>
 
       {summary.isPending ? (
         <Loading />

@@ -4,6 +4,7 @@ import { Line, LineChart, ResponsiveContainer, Tooltip, YAxis } from 'recharts';
 import { useDashboard, useSettings } from '../api/hooks';
 import type { Dashboard, Normalised } from '../api/types';
 import { PageHeader } from '../components/PageHeader';
+import { PageTip } from '../components/PageTip';
 import { ErrorState, Loading } from '../components/States';
 import { Money } from '../components/Money';
 import { PeriodSelector } from '../components/PeriodSelector';
@@ -12,6 +13,7 @@ import { formatDate, formatMoney, relativeDays } from '../lib/format';
 import { useHousehold } from '../lib/household';
 import { BucketCard } from './BucketCard';
 import { OccurrenceActions, OccurrenceStatusBadge } from './OccurrenceActions';
+import { GettingStarted, WelcomeDialog } from './GettingStarted';
 
 const FREQ_LABEL: Record<keyof Normalised, string> = { weekly: 'Weekly', fortnightly: 'Fortnightly', monthly: 'Monthly', annual: 'Annual' };
 const DISPLAY_KEY: Record<string, keyof Normalised> = { WEEKLY: 'weekly', FORTNIGHTLY: 'fortnightly', MONTHLY: 'monthly', ANNUALLY: 'annual' };
@@ -121,6 +123,9 @@ export function DashboardPage() {
   return (
     <>
       <PageHeader title="Dashboard" subtitle={d.budget.name} actions={<PeriodSelector period={d.period} onChange={setPeriod} />} />
+      <PageTip id="dashboard" title="Your period at a glance">
+        Each bucket card shows what it was allocated from your income, what has gone out, and what is left. Bars turn amber near the limit and red when over. Step back and forward through periods with the arrows.
+      </PageTip>
 
       {d.uncategorisedCount > 0 ? (
         <div className="card row wrap" style={{ marginBottom: '1rem', borderColor: 'var(--warning)' }} role="status">
@@ -135,7 +140,9 @@ export function DashboardPage() {
         </div>
       ) : null}
 
+      <WelcomeDialog />
       <div className="stack">
+        <GettingStarted />
         <IncomePanel d={d} displayFrequency={displayFrequency} />
 
         <section aria-labelledby="buckets-h" className="stack-sm">

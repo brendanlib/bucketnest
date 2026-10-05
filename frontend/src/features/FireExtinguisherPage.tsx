@@ -4,6 +4,7 @@ import { api, ApiError } from '../api/client';
 import { MONEY_QUERIES, useAccounts, useApiMutation, useGoals } from '../api/hooks';
 import type { Frequency, Goal } from '../api/types';
 import { PageHeader } from '../components/PageHeader';
+import { PageTip } from '../components/PageTip';
 import { ConfirmDialog, Modal } from '../components/Modal';
 import { EmptyState, ErrorState, FormError, Loading } from '../components/States';
 import { Field } from '../components/Field';
@@ -56,6 +57,9 @@ export function FireExtinguisherPage() {
           </>
         }
       />
+      <PageTip id="fire-extinguisher" title="The Fire Extinguisher bucket">
+        Barefoot’s order: build an emergency fund first, then pay down debt, then invest. Put your goals in that order — the top one gets spare Fire Extinguisher money first.
+      </PageTip>
       <section className="stack" aria-labelledby="goals-h">
         <h2 id="goals-h">Goals</h2>
         {goals.data.length === 0 ? (

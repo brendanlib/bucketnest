@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useDashboard, useOccurrences, useRecurring } from '../api/hooks';
 import type { Occurrence, Recurring } from '../api/types';
 import { PageHeader } from '../components/PageHeader';
+import { PageTip } from '../components/PageTip';
 import { EmptyState, ErrorState, Loading } from '../components/States';
 import { Money } from '../components/Money';
 import { Icon } from '../components/Icon';
@@ -60,6 +61,9 @@ export function BillsPage() {
           </button>
         }
       />
+      <PageTip id="bills" title="Bills come from your schedules">
+        Each bill is a recurring schedule. Nothing is recorded until it’s paid: press “Mark paid” (you can adjust the amount), or turn on auto-post. Importing your bank file also matches bills automatically.
+      </PageTip>
       <div className="card" style={{ padding: bills.length ? 0 : undefined }}>
         {bills.length === 0 ? (
           <EmptyState

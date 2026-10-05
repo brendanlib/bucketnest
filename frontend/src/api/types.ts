@@ -1,7 +1,7 @@
 export type BucketKey = 'BILLS' | 'SMILE' | 'SPLURGE' | 'FIRE_EXTINGUISHER';
 
 export interface Me {
-  user: { id: string; email: string; name: string };
+  user: { id: string; email: string; name: string; dismissedTips: string[] };
   household: { id: string; name: string; role: 'OWNER' | 'MEMBER'; currency: string; locale: string; timezone: string };
 }
 
@@ -599,4 +599,14 @@ export interface PayoffPlan {
   debts: { id: string; name: string; balanceCents: number; annualRate: string; payoffDate: string | null; interestCents: number }[];
   timeline: { date: string; balanceCents: number }[];
   alternative: { strategy: string; debtFreeDate: string | null; totalInterestCents: number };
+}
+
+export type OnboardingStep = 'accounts' | 'income' | 'bills' | 'budget' | 'transactions' | 'savings';
+
+export interface Onboarding {
+  dismissed: boolean;
+  showWelcome: boolean;
+  steps: { key: OnboardingStep; done: boolean }[];
+  completed: number;
+  total: number;
 }

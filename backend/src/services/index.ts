@@ -13,6 +13,7 @@ import { createImportService } from './import.service.js';
 import { createSinkingFundService } from './sinking-fund.service.js';
 import { createGoalService } from './goal.service.js';
 import { createDebtService } from './debt.service.js';
+import { createOnboardingService } from './onboarding.service.js';
 
 export function createServices(deps: Deps) {
   const transactions = createTransactionService(deps);
@@ -26,6 +27,7 @@ export function createServices(deps: Deps) {
   const recurring = createRecurringService(deps, transactions);
   const rules = createRuleService(deps, transactions);
   return {
+    onboarding: createOnboardingService(deps, budgets),
     sinkingFunds,
     goals,
     debts,

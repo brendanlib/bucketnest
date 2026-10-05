@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router';
 import { useAccounts, useBuckets } from '../api/hooks';
 import type { Account } from '../api/types';
 import { PageHeader } from '../components/PageHeader';
+import { PageTip } from '../components/PageTip';
 import { EmptyState, ErrorState, Loading } from '../components/States';
 import { Money } from '../components/Money';
 import { Icon } from '../components/Icon';
@@ -13,9 +14,8 @@ export function AccountsPage() {
   const [showClosed, setShowClosed] = useState(false);
   const accounts = useAccounts(showClosed);
   const buckets = useBuckets();
-  const [adding, setAdding] = useState(false);
-  const [params] = useSearchParams();
-  const welcome = params.get('welcome') === '1';
+  const [params, setParams] = useSearchParams();
+  const [adding, setAdding] = useState(params.get('add') === '1');
 
   if (accounts.isPending) return <Loading />;
   if (accounts.isError) return <ErrorState error={accounts.error} onRetry={() => accounts.refetch()} />;
@@ -44,14 +44,9 @@ export function AccountsPage() {
           </>
         }
       />
-      {welcome && list.length === 0 ? (
-        <div className="card" style={{ marginBottom: '1rem' }}>
-          <h2>Welcome! Start by adding your accounts</h2>
-          <p className="muted" style={{ marginTop: '0.4rem' }}>
-            Add your everyday bank account, any bucket accounts (Bills, Smile, Splurge, Fire Extinguisher), and your cards and loans. Your buckets and categories are already set up.
-          </p>
-        </div>
-      ) : null}
+      <PageTip id="accounts" title="Balances look after themselves">
+        Enter each account’s balance once, on its opening date. From then on the balance is worked out from transactions. If it drifts from your bank, use “Reconcile to statement” on the account.
+      </PageTip>
       {list.length === 0 ? (
         <div className="card">
           <EmptyState
@@ -103,7 +98,14 @@ export function AccountsPage() {
             ))}
         </div>
       )}
-      {adding ? <AccountForm onClose={() => setAdding(false)} /> : null}
+      {adding ? (
+        <AccountForm
+          onClose={() => {
+            setAdding(false);
+            if (params.has('add')) setParams({}, { replace: true });
+          }}
+        />
+      ) : null}
     </>
   );
 }

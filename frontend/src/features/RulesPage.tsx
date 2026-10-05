@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import { MONEY_QUERIES, useApiMutation, useRules } from '../api/hooks';
 import type { Rule } from '../api/types';
 import { PageHeader } from '../components/PageHeader';
+import { PageTip } from '../components/PageTip';
 import { ConfirmDialog } from '../components/Modal';
 import { EmptyState, ErrorState, Loading, errorMessage } from '../components/States';
 import { Money } from '../components/Money';
@@ -48,6 +49,9 @@ export function RulesPage() {
           </button>
         }
       />
+      <PageTip id="rules" title="Let rules do the categorising">
+        Rules categorise imported transactions by their description, for example WOOLWORTHS → Groceries. When you categorise an imported transaction, you’ll be offered a rule for it.
+      </PageTip>
       <div className="card">
         {list.length === 0 ? (
           <EmptyState

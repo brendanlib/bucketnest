@@ -12,7 +12,7 @@ const Email = z.email('Enter a valid email address').max(254).transform((v) => v
 const Password = z.string().min(1, 'Enter a password').max(MAX_PASSWORD_LENGTH);
 
 const MeResponse = z.object({
-  user: z.object({ id: z.string(), email: z.string(), name: z.string() }),
+  user: z.object({ id: z.string(), email: z.string(), name: z.string(), dismissedTips: z.array(z.string()) }),
   household: z.object({
     id: z.string(),
     name: z.string(),
@@ -40,7 +40,7 @@ export const authRoutes =
         app.deps.db.user.findUniqueOrThrow({ where: { id: userId } }),
       ]);
       return {
-        user: { id: user.id, email: user.email, name: user.name },
+        user: { id: user.id, email: user.email, name: user.name, dismissedTips: user.dismissedTips },
         household: {
           id: settings.id,
           name: settings.name,

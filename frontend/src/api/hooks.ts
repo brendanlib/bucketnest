@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { api, qs } from './client';
-import type { Account, BalanceHistory, Bucket, Budget, BudgetSummary, Category, Dashboard, Debt, Goal, ImportBatch, Me, Occurrence, Page, PayoffComparison, PayoffPlan, Recurring, Rule, SessionInfo, Settings, SinkingFund, Transaction } from './types';
+import type { Onboarding, Account, BalanceHistory, Bucket, Budget, BudgetSummary, Category, Dashboard, Debt, Goal, ImportBatch, Me, Occurrence, Page, PayoffComparison, PayoffPlan, Recurring, Rule, SessionInfo, Settings, SinkingFund, Transaction } from './types';
 
 export const keys = {
   me: ['me'] as const,
@@ -111,5 +111,20 @@ export const usePayoff = (id: string, extraCents?: number) =>
 export const usePayoffPlan = (strategy?: string, extraMonthlyCents?: number) =>
   useQuery({ queryKey: ['debts', 'plan', strategy, extraMonthlyCents], queryFn: () => api.get<PayoffPlan>(`/debts/plan${qs({ strategy, extraMonthlyCents })}`), placeholderData: (p) => p });
 
+export const useOnboarding = () => useQuery({ queryKey: ['onboarding'], queryFn: () => api.get<Onboarding>('/onboarding') });
+
+/** Dismisses a help tip (or the checklist) for this user, on every device. */
+export function useDismissTip() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (key: string) => api.post<{ dismissedTips: string[] }>(`/me/tips/${key}/dismiss`),
+    onMutate: (key) => {
+      // Hide it straight away.
+      qc.setQueryData<Me>(keys.me, (me) => (me ? { ...me, user: { ...me.user, dismissedTips: [...me.user.dismissedTips, key] } } : me));
+    },
+    onSettled: () => Promise.all([qc.invalidateQueries({ queryKey: keys.me }), qc.invalidateQueries({ queryKey: ['onboarding'] })]),
+  });
+}
+
 /** Anything that moves money can change balances, budgets, the dashboard and occurrence status. */
-export const MONEY_QUERIES: QueryKey[] = [['transactions'], ['accounts'], ['categories'], ['dashboard'], ['budgets'], ['recurring'], ['imports'], ['sinking-funds'], ['goals'], ['debts']];
+export const MONEY_QUERIES: QueryKey[] = [['transactions'], ['accounts'], ['categories'], ['dashboard'], ['budgets'], ['recurring'], ['imports'], ['sinking-funds'], ['goals'], ['debts'], ['onboarding']];

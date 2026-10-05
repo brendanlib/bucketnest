@@ -88,7 +88,7 @@ export function RegisterPage() {
       const me = await api.post<Me>('/auth/register', { ...form, timezone });
       qc.setQueryData(keys.me, me);
       qc.invalidateQueries({ queryKey: keys.registration });
-      navigate('/accounts?welcome=1');
+      navigate('/dashboard');
     } catch (err) {
       setError(err);
     } finally {

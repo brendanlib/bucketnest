@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { api } from '../api/client';
 import { MONEY_QUERIES, useApiMutation, useOccurrences, useRecurring } from '../api/hooks';
 import type { Recurring, RecurringType } from '../api/types';
 import { PageHeader } from '../components/PageHeader';
+import { PageTip } from '../components/PageTip';
 import { ConfirmDialog } from '../components/Modal';
 import { EmptyState, ErrorState, Loading } from '../components/States';
 import { Money } from '../components/Money';
@@ -77,7 +79,9 @@ export function RecurringPage() {
   const today = todayIn(timezone);
   const schedules = useRecurring();
   const upcoming = useOccurrences(addDaysIso(today, -31), addDaysIso(today, 30));
-  const [editing, setEditing] = useState<Recurring | { type: RecurringType } | null>(null);
+  const [params, setParams] = useSearchParams();
+  const addType = params.get('add') as RecurringType | null;
+  const [editing, setEditing] = useState<Recurring | { type: RecurringType } | null>(addType ? { type: addType } : null);
   const [deleting, setDeleting] = useState<Recurring | null>(null);
   const toast = useToast();
   const remove = useApiMutation((id: string) => api.delete(`/recurring-transactions/${id}`), MONEY_QUERIES);
@@ -98,6 +102,9 @@ export function RecurringPage() {
           </button>
         }
       />
+      <PageTip id="recurring" title="Schedules plan, transactions record">
+        A schedule shows what’s coming but never creates future transactions. Your income schedules set how much each bucket is allocated, so start with your pay.
+      </PageTip>
       <div className="dash-grid">
         <div className="stack">
           {schedules.data.length === 0 ? (
@@ -162,7 +169,16 @@ export function RecurringPage() {
           )}
         </section>
       </div>
-      {editing ? <RecurringForm schedule={'id' in editing ? editing : undefined} defaultType={'id' in editing ? undefined : editing.type} onClose={() => setEditing(null)} /> : null}
+      {editing ? (
+        <RecurringForm
+          schedule={'id' in editing ? editing : undefined}
+          defaultType={'id' in editing ? undefined : editing.type}
+          onClose={() => {
+            setEditing(null);
+            if (params.has('add')) setParams({}, { replace: true });
+          }}
+        />
+      ) : null}
       {deleting ? (
         <ConfirmDialog
           title={`Delete ${deleting.name}?`}

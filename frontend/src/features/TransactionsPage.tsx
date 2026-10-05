@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { MONEY_QUERIES, useAccounts, useApiMutation, useBuckets, useCategories, useTransactions, type TransactionQuery } from '../api/hooks';
 import type { Transaction, TransactionType } from '../api/types';
 import { PageHeader } from '../components/PageHeader';
+import { PageTip } from '../components/PageTip';
 import { EmptyState, ErrorState, Loading } from '../components/States';
 import { Money } from '../components/Money';
 import { MoneyInput } from '../components/MoneyInput';
@@ -269,6 +270,9 @@ export function TransactionsPage() {
           </>
         }
       />
+      <PageTip id="transactions" title="Pick a category, the bucket follows">
+        Every expense goes in a category, and each category belongs to a bucket. Transfers between your own accounts and card repayments never count as spending, so nothing is counted twice.
+      </PageTip>
       {query.importBatchId ? (
         <div className="card row small" style={{ marginBottom: '1rem', padding: '0.6rem 1rem' }}>
           Showing the transactions from one import.

@@ -300,3 +300,22 @@ table.table { width: 100%; border-collapse: collapse; }
 .import-table td { vertical-align: top; }
 .import-table select.input { min-height: 34px; padding: 0.3rem 0.5rem; font-size: 0.88rem; }
 tr.row-problem td { background: var(--danger-soft); }
+
+/* ── Help ───────────────────────────────────────────── */
+.tip { display: flex; gap: 0.75rem; align-items: flex-start; background: var(--primary-soft); border: 1px solid var(--primary); border-radius: var(--radius); padding: 0.8rem 1rem; margin-bottom: 1rem; }
+.tip .tip-icon { color: var(--primary); flex-shrink: 0; margin-top: 0.1rem; }
+.tip .tip-icon svg { width: 20px; height: 20px; }
+.tip .grow { flex: 1; min-width: 0; }
+.tip strong { display: block; margin-bottom: 0.15rem; }
+.getting-started { border-color: var(--primary); }
+.gs-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.gs-steps li { display: flex; gap: 0.75rem; align-items: center; padding: 0.6rem 0; border-bottom: 1px solid var(--border); }
+.gs-steps li:last-child { border-bottom: 0; }
+.gs-steps li.done { color: var(--text-3); }
+.gs-steps .gs-mark { width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-weight: 700; font-size: 0.85rem; background: var(--surface-2); color: var(--text-2); }
+.gs-steps li.done .gs-mark { background: var(--success-soft); color: var(--success); }
+.gs-steps li.next .gs-mark { background: var(--primary); color: var(--on-primary); }
+.bucket-legend { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+@media (max-width: 640px) { .gs-steps li { flex-wrap: wrap; } .gs-steps li .btn { margin-left: 2.5rem; } }
+
+a.btn { text-decoration: none; }

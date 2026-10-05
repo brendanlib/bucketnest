@@ -5,6 +5,7 @@ import { api, ApiError } from '../api/client';
 import { MONEY_QUERIES, useAccounts, useApiMutation, useBuckets, useCategories, useImportBatches } from '../api/hooks';
 import type { Account, ColumnMapping, DateFormat, ImportAction, ImportBatch, ImportDecision, ImportRow, ParseResult, SignConvention } from '../api/types';
 import { PageHeader } from '../components/PageHeader';
+import { PageTip } from '../components/PageTip';
 import { ConfirmDialog } from '../components/Modal';
 import { ErrorState, FormError, Loading, errorMessage } from '../components/States';
 import { AccountSelect, CategorySelect } from '../components/Pickers';
@@ -79,6 +80,9 @@ export function ImportPage() {
   return (
     <>
       <PageHeader title="Import transactions" subtitle="Upload a CSV export from your bank. Nothing is saved until you confirm, and every import can be undone." />
+      <PageTip id="import" title="Importing from your bank">
+        Download a CSV for one account from your internet banking, then upload it here. Rows you already have are skipped, scheduled bills are matched, and you review everything before it’s saved. Every import can be undone.
+      </PageTip>
       <ol className="steps" aria-label="Import steps">
         {(['upload', 'map', 'review', 'done'] as Step[]).map((s, i) => (
           <li key={s} aria-current={step === s ? 'step' : undefined} className={step === s ? 'current' : undefined}>
