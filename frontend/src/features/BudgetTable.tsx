@@ -1,4 +1,5 @@
 import { Fragment } from 'react';
+import { bucketColour } from '../lib/colours';
 import { Link } from 'react-router';
 import type { BudgetItem, BudgetLine, BudgetSummary, Variance } from '../api/types';
 import { Money } from '../components/Money';
@@ -61,7 +62,7 @@ export function BudgetTable({
                 <tr className="bucket-row">
                   <td>
                     <span className="row" style={{ gap: '0.5rem' }}>
-                      <span className="dot" style={{ background: b.colour }} aria-hidden="true" />
+                      <span className="dot" style={{ background: bucketColour(b.colour) }} aria-hidden="true" />
                       {b.name}
                     </span>
                     <div className="small muted" style={{ fontWeight: 400 }}>
@@ -138,7 +139,7 @@ export function BudgetTable({
         {buckets.map((b) => (
           <section key={b.bucketId} className="stack-sm" style={{ marginBottom: '1rem' }}>
             <div className="row">
-              <span className="dot" style={{ background: b.colour }} aria-hidden="true" />
+              <span className="dot" style={{ background: bucketColour(b.colour) }} aria-hidden="true" />
               <h3>{b.name}</h3>
               <span className="spacer" />
               <span className="small">

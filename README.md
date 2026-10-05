@@ -2,7 +2,7 @@
 
 A self-hosted household budget app built on the Barefoot Investor bucket method: Bills, Smile, Splurge and Fire Extinguisher. It runs on your own server with `docker compose up -d` and keeps everything in PostgreSQL.
 
-> **Build status: Phase 3 of 6**, plus CSV import and rules from Phase 5. Reports, forecasts, the calendar and full net worth are Phase 4. See [Roadmap](#roadmap).
+> **Build status: Phase 4 of 6**, plus CSV import and rules from Phase 5. Notifications, data export and the final hardening pass remain. See [Roadmap](#roadmap).
 
 ## What works now
 
@@ -64,6 +64,14 @@ A self-hosted household budget app built on the Barefoot Investor bucket method:
   - Rules run in order and can be tested against recent transactions or applied to uncategorised ones.
   - When you categorise an imported transaction, the app offers to make a rule.
 - **Bills:** every Bills-bucket schedule, with its next due date, fixed or estimate, and what's been paid this period.
+- **Reports:** every report has a chart, a table view and a CSV download. Date presets cover this month, last month, financial year to date, last financial year, last 12 months and custom ranges.
+  - **Spending:** by bucket (donut), by category (top 15 + Other) and by month. Net of refunds, with bucket, category and account filters.
+  - **Income vs expenses:** monthly, with the savings rate.
+  - **Budget vs actual:** for any period, by category or by bucket.
+  - **Debt reduction:** each debt's actual balance, then its projected payoff.
+  - **Forecast:** for 1–12 months — per category, per bucket, income, and every account's month-end balance.
+- **Net worth:** account balances plus dated valuations for property, vehicles and anything else you own, less what you owe. It comes with a breakdown table and a history chart that is recomputed from transactions. A snapshot is also stored on the 1st of each month.
+- **Calendar:** pay, bills, repayments and transfers, sinking fund due dates and goal targets. Recorded and upcoming items look different. On desktop it's a month grid; on mobile, an agenda list. Tap a day to mark items paid or skip them.
 - **Getting started:**
   - On first login a welcome screen explains the buckets.
   - A dashboard checklist (accounts, pay, bills, budget, transactions, savings) ticks itself off from your data.

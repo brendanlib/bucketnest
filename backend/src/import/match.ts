@@ -50,3 +50,39 @@ export function pairClosest<R extends Candidate, C extends Candidate>(
   }
   return result;
 }
+
+export interface ScheduleLike {
+  type: string;
+  accountId: string;
+  toAccountId: string | null;
+  categoryId: string | null;
+  amountCents: number;
+  amountKind: 'FIXED' | 'ESTIMATE';
+}
+
+export interface TransactionLike {
+  type: string;
+  accountId: string;
+  toAccountId: string | null;
+  amountCents: number;
+  categoryIds: string[];
+}
+
+/**
+ * Whether a schedule "explains" a past transaction that isn't linked to it —
+ * typically history entered or imported before the schedule existed. Same
+ * account(s), same kind of transaction, the schedule's category (when it has
+ * one) and its amount (fixed exactly, estimates within ±20%). Used so the
+ * forecast doesn't count a recurring bill twice.
+ */
+export function scheduleExplains(s: ScheduleLike, t: TransactionLike): boolean {
+  const sameType =
+    s.type === t.type ||
+    // Transfers into loans are stored as debt repayments, and into Fire Extinguisher accounts as savings contributions.
+    (s.type === 'TRANSFER' && (t.type === 'DEBT_REPAYMENT' || t.type === 'SAVINGS_CONTRIBUTION')) ||
+    (t.type === 'TRANSFER' && (s.type === 'DEBT_REPAYMENT' || s.type === 'SAVINGS_CONTRIBUTION'));
+  if (!sameType || s.accountId !== t.accountId) return false;
+  if ((s.toAccountId ?? null) !== (t.toAccountId ?? null)) return false;
+  if (s.categoryId && (s.type === 'EXPENSE' || s.type === 'INCOME') && !t.categoryIds.includes(s.categoryId)) return false;
+  return amountsMatch(s.amountCents, t.amountCents, s.amountKind);
+}

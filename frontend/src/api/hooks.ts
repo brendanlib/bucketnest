@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { api, qs } from './client';
-import type { Onboarding, Account, BalanceHistory, Bucket, Budget, BudgetSummary, Category, Dashboard, Debt, Goal, ImportBatch, Me, Occurrence, Page, PayoffComparison, PayoffPlan, Recurring, Rule, SessionInfo, Settings, SinkingFund, Transaction } from './types';
+import type { Asset, BudgetActualReport, CalendarItem, DebtReductionItem, ForecastReport, IncomeReport, NetWorthReport, SpendingReport, Onboarding, Account, BalanceHistory, Bucket, Budget, BudgetSummary, Category, Dashboard, Debt, Goal, ImportBatch, Me, Occurrence, Page, PayoffComparison, PayoffPlan, Recurring, Rule, SessionInfo, Settings, SinkingFund, Transaction } from './types';
 
 export const keys = {
   me: ['me'] as const,
@@ -126,5 +126,18 @@ export function useDismissTip() {
   });
 }
 
+export const useReport = <T,>(name: string, params: Record<string, string | number | undefined>, enabled = true) =>
+  useQuery({ queryKey: ['reports', name, params], queryFn: () => api.get<T>(`/reports/${name}${qs(params)}`), placeholderData: (p) => p, enabled });
+export const useSpendingReport = (p: Record<string, string | undefined>) => useReport<SpendingReport>('spending', p);
+export const useIncomeReport = (p: Record<string, string | undefined>) => useReport<IncomeReport>('income-vs-expenses', p);
+export const useBudgetActualReport = (p: Record<string, string | undefined>) => useReport<BudgetActualReport>('budget-vs-actual', p);
+export const useNetWorthReport = (p: Record<string, string | undefined>) => useReport<NetWorthReport>('net-worth', p);
+export const useDebtReduction = (months: number) =>
+  useQuery({ queryKey: ['reports', 'debt-reduction', months], queryFn: async () => (await api.get<{ items: DebtReductionItem[] }>(`/reports/debt-reduction?months=${months}`)).items });
+export const useForecast = (months: number, method?: string) => useReport<ForecastReport>('forecast', { months, method });
+export const useAssets = () => useQuery({ queryKey: ['assets'], queryFn: async () => (await api.get<{ items: Asset[] }>('/assets')).items });
+export const useCalendar = (from: string, to: string) =>
+  useQuery({ queryKey: ['calendar', from, to], queryFn: async () => (await api.get<{ items: CalendarItem[] }>(`/calendar${qs({ from, to })}`)).items, placeholderData: (p) => p });
+
 /** Anything that moves money can change balances, budgets, the dashboard and occurrence status. */
-export const MONEY_QUERIES: QueryKey[] = [['transactions'], ['accounts'], ['categories'], ['dashboard'], ['budgets'], ['recurring'], ['imports'], ['sinking-funds'], ['goals'], ['debts'], ['onboarding']];
+export const MONEY_QUERIES: QueryKey[] = [['transactions'], ['accounts'], ['categories'], ['dashboard'], ['budgets'], ['recurring'], ['imports'], ['sinking-funds'], ['goals'], ['debts'], ['onboarding'], ['reports'], ['assets'], ['calendar']];

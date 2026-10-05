@@ -24,6 +24,7 @@ export const SettingsResponse = z.object({
   redThreshold: z.number(),
   debtPayoffStrategy: z.enum(['SNOWBALL', 'AVALANCHE']),
   gstEnabled: z.boolean(),
+  forecastMethod: z.enum(['AVG3', 'AVG6', 'AVG12', 'MANUAL']),
 });
 
 export const settingsRoutes =
@@ -53,6 +54,7 @@ export const settingsRoutes =
             redThreshold: Threshold.optional(),
             debtPayoffStrategy: z.enum(['SNOWBALL', 'AVALANCHE']).optional(),
             gstEnabled: z.boolean().optional(),
+            forecastMethod: z.enum(['AVG3', 'AVG6', 'AVG12']).optional(),
           }),
           response: { 200: SettingsResponse },
         },

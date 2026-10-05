@@ -173,3 +173,43 @@ When generating a future migration with `prisma migrate diff`, check the output 
   - The plan simulates monthly. Every debt is paid its minimum, converted to a monthly amount.
   - On top of that, the debts' extras (or an amount you choose) go to the debts in strategy order: snowball takes the smallest starting balance first, avalanche the highest rate. That order is fixed at the start.
   - A cleared debt's repayment joins the pool.
+
+## Reports (spec §12)
+
+- **What counts as spending:** category actuals net of refunds, including bills paid from sinking funds (reports are history, not period variance). Fire Extinguisher money is shown by bucket but counted as saving, not spending.
+- **Savings rate:** (income − spending) ÷ income, where spending excludes Fire Extinguisher saving.
+- **Account filter:** filtering by account uses that account's own transactions and ignores *Include in budget*.
+- **CSV exports:**
+  - Money is written as plain decimals (`1234.56`).
+  - Text a spreadsheet would read as a formula is prefixed with `'`.
+  - Plain numbers, including negative ones, are left as numbers.
+
+## Forecast
+
+- **History:** completed months only, from the household's first transaction and at most 12 months back. The current partial month is never used.
+- **Per category:** scheduled occurrences in each future month + the average of the category's *unscheduled* spending over the method's window (3, 6 or 12 months). The window can be set for the household or overridden per category, and a category can use a manual monthly amount instead.
+  - With fewer completed months than the window, the average uses what there is and is flagged *limited history*.
+- **What counts as scheduled:** a past transaction is treated as scheduled if it is linked to a schedule, **or** an active schedule explains it.
+  - "Explains" means the same account(s), the same kind of transaction (a transfer into a loan matches a debt repayment), the schedule's category, and its amount (fixed exactly, estimates within ±20%).
+  - This matters for real data: history imported or entered before a schedule existed would otherwise be counted twice, once in the average and once as the scheduled occurrence.
+- **Debt and savings schedules:** debt-repayment schedules are forecast in the debt's Bills category, at the full repayment amount. Card repayments (Transfer treatment) are not spending. Savings-contribution schedules go to their Fire Extinguisher category.
+- **Income:** scheduled income + the average of unscheduled income.
+- **Account month-end balances:** today's balance, plus scheduled movements from today on (anything already recorded is skipped), plus the account's average unscheduled monthly change.
+
+## Net worth
+
+- **At any date:** included asset-account balances + the latest valuation on or before that date of each included asset − included liability balances. Accounts count from their opening date.
+- **History:** month ends, recomputed from transactions and valuations. Editing the past updates the history.
+- **Snapshots:** a job stores one per household for the 1st of each month. It is idempotent, and a missed run loses nothing because history can always be recomputed.
+- **Valuations:** one per asset per day; a second valuation on the same day replaces the first. To record a sale, add a $0 valuation on the sale date, which keeps the history.
+
+## Calendar
+
+Each schedule's occurrences (posted ones link to their transaction), sinking fund due dates and goal target dates, up to 100 days per request.
+
+## Colours
+
+- **Bucket colours:** Bills `#2A78D6`, Smile `#4A3AA7`, Splurge `#1BAF7A`, Fire Extinguisher `#EB6834`. This set passed the palette validator on all pairs in light mode: CVD ΔE ≥ 9.2 and normal-vision ΔE ≥ 16.3.
+- **Dark mode:** uses `#256ABF`, `#9085E9`, `#1BAF7A`, `#D95926`, which also pass on all pairs.
+- **Contrast relief:** aqua is under 3:1 on white, so every chart that uses it carries labels, a legend or a table view.
+- **Migration:** an earlier default set put Smile and Splurge 3.8 ΔE apart under deuteranopia. Households still on those defaults were migrated to the new set.

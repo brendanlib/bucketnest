@@ -1,4 +1,5 @@
 import { Link } from 'react-router';
+import { bucketColour } from '../lib/colours';
 import type { DashboardBucket } from '../api/types';
 import { Money } from '../components/Money';
 import { ProgressBar } from '../components/Progress';
@@ -17,7 +18,7 @@ export function BucketCard({ bucket }: { bucket: DashboardBucket }) {
   const fire = bucket.key === 'FIRE_EXTINGUISHER';
   const over = bucket.remainingCents < 0;
   return (
-    <article className="card bucket-card stack-sm" style={{ borderTop: `4px solid ${bucket.colour}` }} aria-labelledby={`bucket-${bucket.key}`}>
+    <article className="card bucket-card stack-sm" style={{ borderTop: `4px solid ${bucketColour(bucket.colour)}` }} aria-labelledby={`bucket-${bucket.key}`}>
       <div className="row">
         <h2 id={`bucket-${bucket.key}`}>{bucket.name}</h2>
         <span className="spacer" />

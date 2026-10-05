@@ -21,6 +21,9 @@ import { RulesPage } from './features/RulesPage';
 import { SinkingFundsPage } from './features/SinkingFundsPage';
 import { FireExtinguisherPage } from './features/FireExtinguisherPage';
 import { DebtsPage, DebtDetailPage } from './features/DebtsPage';
+import { ReportsPage } from './features/ReportsPage';
+import { NetWorthPage } from './features/NetWorthPage';
+import { CalendarPage } from './features/CalendarPage';
 
 function RequireAuth() {
   const me = useMe();
@@ -66,6 +69,9 @@ export function App() {
           <Route path="/fire-extinguisher" element={<FireExtinguisherPage />} />
           <Route path="/debts" element={<DebtsPage />} />
           <Route path="/debts/:id" element={<DebtDetailPage />} />
+          <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/net-worth" element={<NetWorthPage />} />
+          <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/transactions" element={<TransactionsPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/accounts/:id" element={<AccountDetailPage />} />

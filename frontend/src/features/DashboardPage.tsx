@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { bucketColour } from '../lib/colours';
 import { Link } from 'react-router';
 import { Line, LineChart, ResponsiveContainer, Tooltip, YAxis } from 'recharts';
 import { useDashboard, useSettings } from '../api/hooks';
@@ -210,7 +211,7 @@ export function DashboardPage() {
               ) : (
                 d.alerts.slice(0, 8).map((a) => (
                   <Link key={a.categoryId} to={`/budget?bucket=${a.bucketKey}`} className="list-item" style={{ color: 'inherit', textDecoration: 'none' }}>
-                    <span className="dot" style={{ background: a.colour }} aria-hidden="true" />
+                    <span className="dot" style={{ background: bucketColour(a.colour) }} aria-hidden="true" />
                     <div className="grow">
                       <div className="truncate">{a.name}</div>
                       <div className="muted small">

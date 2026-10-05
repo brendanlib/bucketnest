@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { bucketColour } from '../lib/colours';
 import type { Bucket } from '../api/types';
 import { formatHundredths, percentToHundredths } from '../lib/format';
 
@@ -23,7 +24,7 @@ export function PercentageEditor({ buckets, saving, onSave }: { buckets: Bucket[
     >
       {buckets.map((b) => (
         <div key={b.id} className="row">
-          <span className="dot" style={{ background: b.colour }} aria-hidden="true" />
+          <span className="dot" style={{ background: bucketColour(b.colour) }} aria-hidden="true" />
           <label htmlFor={`pct-${b.id}`} style={{ flex: 1, fontWeight: 550 }}>
             {b.name}
           </label>

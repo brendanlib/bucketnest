@@ -25,6 +25,8 @@ export interface Category {
   isSystem: boolean;
   systemKey: string | null;
   sortOrder: number;
+  forecastMethod: 'AVG3' | 'AVG6' | 'AVG12' | 'MANUAL' | null;
+  forecastManualCents: number | null;
   transactionCount?: number;
 }
 
@@ -134,6 +136,7 @@ export interface Settings {
   redThreshold: number;
   debtPayoffStrategy: 'SNOWBALL' | 'AVALANCHE';
   gstEnabled: boolean;
+  forecastMethod: 'AVG3' | 'AVG6' | 'AVG12' | 'MANUAL';
 }
 
 export interface SessionInfo {
@@ -609,4 +612,95 @@ export interface Onboarding {
   steps: { key: OnboardingStep; done: boolean }[];
   completed: number;
   total: number;
+}
+
+export interface SpendingReport {
+  from: string;
+  to: string;
+  totalCents: number;
+  byBucket: { bucketId: string; key: BucketKey; name: string; colour: string; isSaving: boolean; amountCents: number }[];
+  byCategory: { categoryId: string | null; name: string; bucketKey: BucketKey | null; amountCents: number }[];
+  monthly: { month: string; totalCents: number; byBucket: Record<string, number> }[];
+}
+
+export interface IncomeReport {
+  from: string;
+  to: string;
+  monthly: { month: string; incomeCents: number; spendingCents: number; savedCents: number; netCents: number; savingsRate: number | null }[];
+  totals: { incomeCents: number; spendingCents: number; savedCents: number; netCents: number; savingsRate: number | null };
+}
+
+export interface BudgetActualReport {
+  period: PeriodInfo;
+  groupBy: 'category' | 'bucket';
+  rows: ({ id: string; name: string; bucketKey: BucketKey } & Variance)[];
+  total: Variance;
+}
+
+export interface NetWorthPoint {
+  date: string;
+  assetsCents: number;
+  liabilitiesCents: number;
+  netWorthCents: number;
+}
+
+export interface NetWorthBreakdown {
+  date: string;
+  assetsCents: number;
+  liabilitiesCents: number;
+  netWorthCents: number;
+  groups: { group: string; label: string; side: 'ASSET' | 'LIABILITY'; totalCents: number; items: { id: string; name: string; kind: 'account' | 'asset'; cents: number; valuedOn: string | null }[] }[];
+}
+
+export interface NetWorthReport {
+  from: string;
+  to: string;
+  series: NetWorthPoint[];
+  breakdown: NetWorthBreakdown;
+  snapshots: NetWorthPoint[];
+}
+
+export interface DebtReductionItem {
+  debtId: string;
+  name: string;
+  history: { date: string; balanceCents: number }[];
+  projection: { date: string; balanceCents: number }[];
+  payoffDate: string | null;
+  warning: string | null;
+}
+
+export interface ForecastReport {
+  method: string;
+  months: string[];
+  historyMonths: number;
+  limitedHistory: boolean;
+  categories: { categoryId: string; name: string; bucketId: string; method: string; baseCents: number; months: number[]; limitedHistory: boolean }[];
+  buckets: { bucketId: string; key: BucketKey; name: string; colour: string; months: number[] }[];
+  totals: { month: string; incomeCents: number; spendingCents: number; savingCents: number; netCents: number }[];
+  accounts: { accountId: string; name: string; class: 'ASSET' | 'LIABILITY'; currentCents: number; monthEndCents: number[] }[];
+}
+
+export interface Asset {
+  id: string;
+  name: string;
+  type: 'PROPERTY' | 'VEHICLE' | 'OTHER';
+  includeInNetWorth: boolean;
+  isActive: boolean;
+  notes: string | null;
+  valueCents: number;
+  valuedOn: string | null;
+  valuations: { id: string; date: string; valueCents: number; notes: string | null }[];
+}
+
+export interface CalendarItem {
+  kind: 'occurrence' | 'sinking_fund' | 'goal';
+  id: string;
+  date: string;
+  title: string;
+  amountCents: number;
+  type: string | null;
+  bucketKey: BucketKey | null;
+  colour: string | null;
+  status: string;
+  occurrence: Occurrence | null;
 }

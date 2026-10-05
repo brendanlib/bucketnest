@@ -1,10 +1,14 @@
 import type { BucketKey, NotificationType } from '@prisma/client';
 
+/**
+ * Bucket colours are validated as a categorical set (colour-blind safe on all
+ * pairs, light and dark): see docs/data-model.md. Dark mode uses darker steps.
+ */
 export const DEFAULT_BUCKETS: { key: BucketKey; name: string; percentage: string; colour: string; sortOrder: number }[] = [
-  { key: 'BILLS', name: 'Bills', percentage: '60.00', colour: '#2563EB', sortOrder: 1 },
-  { key: 'SMILE', name: 'Smile', percentage: '10.00', colour: '#DB2777', sortOrder: 2 },
-  { key: 'SPLURGE', name: 'Splurge', percentage: '10.00', colour: '#0D9488', sortOrder: 3 },
-  { key: 'FIRE_EXTINGUISHER', name: 'Fire Extinguisher', percentage: '20.00', colour: '#EA580C', sortOrder: 4 },
+  { key: 'BILLS', name: 'Bills', percentage: '60.00', colour: '#2A78D6', sortOrder: 1 },
+  { key: 'SMILE', name: 'Smile', percentage: '10.00', colour: '#4A3AA7', sortOrder: 2 },
+  { key: 'SPLURGE', name: 'Splurge', percentage: '10.00', colour: '#1BAF7A', sortOrder: 3 },
+  { key: 'FIRE_EXTINGUISHER', name: 'Fire Extinguisher', percentage: '20.00', colour: '#EB6834', sortOrder: 4 },
 ];
 
 /**

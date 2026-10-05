@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { bucketColour } from '../lib/colours';
 import { useSearchParams } from 'react-router';
 import { api } from '../api/client';
 import { MONEY_QUERIES, useAccounts, useApiMutation, useBuckets, useCategories, useTransactions, type TransactionQuery } from '../api/hooks';
@@ -79,7 +80,7 @@ function BucketDots({ t }: { t: Transaction }) {
   return (
     <span className="row bucket-dots" style={{ gap: '0.25rem' }}>
       {t.buckets.map((b) => (
-        <span key={b.id} className="dot" style={{ background: b.colour }} title={b.name} aria-label={b.name} role="img" />
+        <span key={b.id} className="dot" style={{ background: bucketColour(b.colour) }} title={b.name} aria-label={b.name} role="img" />
       ))}
     </span>
   );

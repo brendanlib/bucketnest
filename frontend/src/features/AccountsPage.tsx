@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { bucketColour } from '../lib/colours';
 import { Link, useSearchParams } from 'react-router';
 import { useAccounts, useBuckets } from '../api/hooks';
 import type { Account } from '../api/types';
@@ -74,7 +75,7 @@ export function AccountsPage() {
                     const tag = bucketName(a.bucketTagId);
                     return (
                       <Link key={a.id} to={`/accounts/${a.id}`} className="list-item" style={{ color: 'inherit', textDecoration: 'none' }}>
-                        <span className="dot" style={{ background: tag?.colour ?? 'var(--border)' }} aria-hidden="true" />
+                        <span className="dot" style={{ background: bucketColour(tag?.colour) }} aria-hidden="true" />
                         <div className="grow">
                           <div className="truncate" style={{ fontWeight: 600 }}>
                             {a.name} {a.isClosed ? <span className="badge">Closed</span> : null}

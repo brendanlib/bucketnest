@@ -5,11 +5,10 @@ import type { AccountService } from './account.service.js';
 import type { TransactionService } from './transaction.service.js';
 import type { SinkingFundService } from './sinking-fund.service.js';
 import type { GoalService } from './goal.service.js';
-import { listAccounts } from '../repositories/accounts.js';
+import type { NetWorthService } from './networth.service.js';
 import { listCategories } from '../repositories/categories.js';
 import { debtMovements } from '../repositories/reporting.js';
 import { dateIn } from '../lib/serialize.js';
-import { calculateNetWorth } from '../finance/balance.js';
 import { percentage } from '../finance/money.js';
 import { addDays } from '../finance/dates.js';
 import { lastMonthEnds } from '../finance/periods.js';
@@ -21,22 +20,21 @@ const OVERDUE_LOOKBACK_DAYS = 31;
 /** Everything the dashboard shows for one budget period, in one call (spec §11). */
 export function createDashboardService(
   deps: Deps,
-  services: { budgets: BudgetService; recurring: RecurringService; accounts: AccountService; transactions: TransactionService; sinkingFunds: SinkingFundService; goals: GoalService },
+  services: { budgets: BudgetService; recurring: RecurringService; accounts: AccountService; transactions: TransactionService; sinkingFunds: SinkingFundService; goals: GoalService; netWorth: NetWorthService },
 ) {
   const { db } = deps;
 
+  /** Net worth now (accounts and asset valuations) with month ends for the last 12 months. */
   async function netWorth(householdId: string, today: string) {
-    const accounts = (await listAccounts(db, householdId, { includeClosed: true })).filter((a) => a.includeInNetWorth);
-    const at = async (date: string) => {
-      const balances = await services.accounts.balancesFor(householdId, accounts, dateIn(date));
-      return calculateNetWorth({
-        accounts: accounts.map((a) => ({ accountClass: a.class, balanceCents: balances.get(a.id) ?? 0 })),
-        assetValuationsCents: [],
-      });
+    const months = lastMonthEnds(today, 12);
+    const [current, series] = await Promise.all([services.netWorth.at(householdId, today), services.netWorth.series(householdId, `${months[0]!.slice(0, 8)}01`, today)]);
+    return {
+      date: today,
+      assetsCents: current.assetsCents,
+      liabilitiesCents: current.liabilitiesCents,
+      netWorthCents: current.netWorthCents,
+      history: series.map((p) => ({ date: p.date, netWorthCents: p.netWorthCents })),
     };
-    const points = await Promise.all(lastMonthEnds(today, 12).map(async (date) => ({ date, ...(await at(date)) })));
-    const current = points[points.length - 1]!;
-    return { ...current, history: points.map((p) => ({ date: p.date, netWorthCents: p.netWorthCents })) };
   }
 
   return {

@@ -14,6 +14,8 @@ import { createSinkingFundService } from './sinking-fund.service.js';
 import { createGoalService } from './goal.service.js';
 import { createDebtService } from './debt.service.js';
 import { createOnboardingService } from './onboarding.service.js';
+import { createNetWorthService } from './networth.service.js';
+import { createReportService } from './report.service.js';
 
 export function createServices(deps: Deps) {
   const transactions = createTransactionService(deps);
@@ -24,9 +26,12 @@ export function createServices(deps: Deps) {
   sinkingFunds = createSinkingFundService(deps, transactions);
   const goals = createGoalService(deps, transactions);
   const debts = createDebtService(deps, { transactions, budgets });
+  const netWorth = createNetWorthService(deps, accounts);
   const recurring = createRecurringService(deps, transactions);
   const rules = createRuleService(deps, transactions);
   return {
+    netWorth,
+    reports: createReportService(deps, { budgets, netWorth, debts, accounts, sinkingFunds, goals, recurring }),
     onboarding: createOnboardingService(deps, budgets),
     sinkingFunds,
     goals,
@@ -41,7 +46,7 @@ export function createServices(deps: Deps) {
     transactions,
     budgets,
     recurring,
-    dashboard: createDashboardService(deps, { budgets, recurring, accounts, transactions, sinkingFunds, goals }),
+    dashboard: createDashboardService(deps, { budgets, recurring, accounts, transactions, sinkingFunds, goals, netWorth }),
   };
 }
 

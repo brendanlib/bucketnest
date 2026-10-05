@@ -20,6 +20,7 @@ export interface SettingsInput {
   redThreshold?: number;
   debtPayoffStrategy?: 'SNOWBALL' | 'AVALANCHE';
   gstEnabled?: boolean;
+  forecastMethod?: 'AVG3' | 'AVG6' | 'AVG12' | 'MANUAL';
 }
 
 const CURRENCIES = new Set(Intl.supportedValuesOf('currency'));
@@ -50,6 +51,7 @@ export function serializeSettings(h: Prisma.HouseholdGetPayload<object>) {
     redThreshold: Number(decimalOut(h.redThreshold)),
     debtPayoffStrategy: h.debtPayoffStrategy,
     gstEnabled: h.gstEnabled,
+    forecastMethod: h.forecastMethod,
   };
 }
 
@@ -86,6 +88,7 @@ export function createSettingsService(deps: Deps) {
       if (input.allocationBasis !== undefined) data.allocationBasis = input.allocationBasis;
       if (input.debtPayoffStrategy !== undefined) data.debtPayoffStrategy = input.debtPayoffStrategy;
       if (input.gstEnabled !== undefined) data.gstEnabled = input.gstEnabled;
+      if (input.forecastMethod !== undefined) data.forecastMethod = input.forecastMethod;
 
       const amber = input.amberThreshold ?? Number(current.amberThreshold);
       const red = input.redThreshold ?? Number(current.redThreshold);

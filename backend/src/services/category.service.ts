@@ -21,6 +21,9 @@ export interface CategoryUpdateInput {
   sortOrder?: number;
   /** Required when the bucket changes, because historical bucket totals change too. */
   confirmBucketChange?: boolean;
+  /** Overrides the household forecast method; null returns to the household default. */
+  forecastMethod?: 'AVG3' | 'AVG6' | 'AVG12' | 'MANUAL' | null;
+  forecastManualCents?: number | null;
 }
 
 export function serializeCategory(c: Category, splitCount?: number) {
@@ -35,6 +38,8 @@ export function serializeCategory(c: Category, splitCount?: number) {
     isSystem: c.systemKey !== null,
     systemKey: c.systemKey,
     sortOrder: c.sortOrder,
+    forecastMethod: c.forecastMethod,
+    forecastManualCents: c.forecastManualCents === null ? null : Number(c.forecastManualCents),
     ...(splitCount !== undefined ? { transactionCount: splitCount } : {}),
   };
 }
@@ -110,6 +115,13 @@ export function createCategoryService(deps: Deps) {
 
       if (input.name !== undefined) data.name = input.name;
       if (input.sortOrder !== undefined) data.sortOrder = input.sortOrder;
+      if (input.forecastMethod !== undefined) {
+        if (input.forecastMethod === 'MANUAL' && (input.forecastManualCents == null || input.forecastManualCents < 0)) {
+          throw validationError('Enter the monthly amount to forecast', { field: 'forecastManualCents' });
+        }
+        data.forecastMethod = input.forecastMethod;
+        data.forecastManualCents = input.forecastMethod === 'MANUAL' ? BigInt(input.forecastManualCents!) : null;
+      }
       if (input.isActive !== undefined) {
         if (!input.isActive && current.systemKey) {
           throw conflict('SYSTEM_CATEGORY', 'This category is used by the budgeting rules and cannot be disabled');

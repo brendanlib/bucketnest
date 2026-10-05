@@ -169,6 +169,13 @@ enum NotificationType {
   GOAL_MILESTONE
 }
 
+enum ForecastMethod {
+  AVG3
+  AVG6
+  AVG12
+  MANUAL
+}
+
 enum DebtPayoffStrategy {
   SNOWBALL
   AVALANCHE
@@ -246,6 +253,7 @@ model Household {
   redThreshold       Decimal            @default(100) @map("red_threshold") @db.Decimal(5, 2)
   debtPayoffStrategy DebtPayoffStrategy @default(SNOWBALL) @map("debt_payoff_strategy")
   gstEnabled         Boolean            @default(false) @map("gst_enabled")
+  forecastMethod     ForecastMethod     @default(AVG3) @map("forecast_method")
   createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt          DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -329,6 +337,9 @@ model Category {
   sortOrder   Int          @default(0) @map("sort_order")
   /// Seed identifier for system categories the rules depend on (e.g. "interest_and_fees").
   systemKey   String?      @map("system_key")
+  /// Overrides the household's forecast method for this category.
+  forecastMethod      ForecastMethod? @map("forecast_method")
+  forecastManualCents BigInt?         @map("forecast_manual_cents")
   createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 

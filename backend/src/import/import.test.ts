@@ -197,3 +197,21 @@ describe('matching', () => {
     expect([...pairs]).toEqual([[0, 0]]);
   });
 });
+
+describe('scheduleExplains', () => {
+  const s = { type: 'EXPENSE', accountId: 'a', toAccountId: null, categoryId: 'power', amountCents: 45000, amountKind: 'ESTIMATE' as const };
+  const t = { type: 'EXPENSE', accountId: 'a', toAccountId: null, amountCents: 51230, categoryIds: ['power'] };
+  it('matches look-alike history', async () => {
+    const { scheduleExplains } = await import('./match.js');
+    expect(scheduleExplains(s, t)).toBe(true);
+    expect(scheduleExplains(s, { ...t, amountCents: 60000 })).toBe(false);
+    expect(scheduleExplains({ ...s, amountKind: 'FIXED' }, t)).toBe(false);
+    expect(scheduleExplains(s, { ...t, categoryIds: ['gas'] })).toBe(false);
+    expect(scheduleExplains(s, { ...t, accountId: 'b' })).toBe(false);
+    expect(scheduleExplains(s, { ...t, type: 'REFUND' })).toBe(false);
+    const repay = { type: 'DEBT_REPAYMENT', accountId: 'a', toAccountId: 'loan', categoryId: null, amountCents: 346000, amountKind: 'FIXED' as const };
+    expect(scheduleExplains(repay, { type: 'DEBT_REPAYMENT', accountId: 'a', toAccountId: 'loan', amountCents: 346000, categoryIds: ['mortgage', 'extra'] })).toBe(true);
+    expect(scheduleExplains({ ...repay, type: 'TRANSFER' }, { type: 'DEBT_REPAYMENT', accountId: 'a', toAccountId: 'loan', amountCents: 346000, categoryIds: [] })).toBe(true);
+    expect(scheduleExplains(repay, { type: 'DEBT_REPAYMENT', accountId: 'a', toAccountId: 'other', amountCents: 346000, categoryIds: [] })).toBe(false);
+  });
+});

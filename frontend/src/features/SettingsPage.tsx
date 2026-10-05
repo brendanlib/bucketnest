@@ -85,6 +85,7 @@ function BudgetSettings({ settings }: { settings: Settings }) {
     allocationBasis: settings.allocationBasis,
     amberThreshold: String(settings.amberThreshold),
     redThreshold: String(settings.redThreshold),
+    forecastMethod: settings.forecastMethod === 'MANUAL' ? 'AVG3' : settings.forecastMethod,
   });
 
   return (
@@ -154,6 +155,15 @@ function BudgetSettings({ settings }: { settings: Settings }) {
             </Field>
             <Field label="Amber warning at (% used)">
               {(p) => <input {...p} className="input right" inputMode="decimal" value={form.amberThreshold} onChange={(e) => setForm({ ...form, amberThreshold: e.target.value })} />}
+            </Field>
+            <Field label="Forecast from" hint="How reports project each category; you can override a category on its edit screen.">
+              {(p) => (
+                <select {...p} className="input" value={form.forecastMethod} onChange={(e) => setForm({ ...form, forecastMethod: e.target.value as 'AVG3' | 'AVG6' | 'AVG12' })}>
+                  <option value="AVG3">3-month average</option>
+                  <option value="AVG6">6-month average</option>
+                  <option value="AVG12">12-month average</option>
+                </select>
+              )}
             </Field>
             <Field label="Red warning above (% used)">
               {(p) => <input {...p} className="input right" inputMode="decimal" value={form.redThreshold} onChange={(e) => setForm({ ...form, redThreshold: e.target.value })} />}

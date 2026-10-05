@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { bucketColour } from '../lib/colours';
 import { api, ApiError } from '../api/client';
 import { useApiMutation, useBuckets, useCategories } from '../api/hooks';
 import type { Bucket, Category } from '../api/types';
@@ -107,7 +108,7 @@ export function CategoriesPage() {
           >
             <Icon name={isCollapsed ? 'chevronRight' : 'chevronDown'} />
           </button>
-          {colour ? <span className="dot" style={{ background: colour }} aria-hidden="true" /> : null}
+          {colour ? <span className="dot" style={{ background: bucketColour(colour) }} aria-hidden="true" /> : null}
           <h2 id={`cat-${title}`}>{title}</h2>
           <span className="muted small">{count} categories</span>
           <span className="spacer" />

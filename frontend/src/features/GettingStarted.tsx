@@ -130,16 +130,16 @@ export function WelcomeDialog() {
         <p>Home Budget follows the Barefoot Investor bucket method. Your take-home pay is shared across four buckets:</p>
         <ul className="bucket-legend">
           <li>
-            <span className="dot" style={{ background: '#2563EB' }} aria-hidden="true" /> <strong>Bills</strong> — essentials and fixed costs (60%)
+            <span className="dot" style={{ background: 'var(--bucket-1)' }} aria-hidden="true" /> <strong>Bills</strong> — essentials and fixed costs (60%)
           </li>
           <li>
-            <span className="dot" style={{ background: '#DB2777' }} aria-hidden="true" /> <strong>Smile</strong> — saving for things you’ll enjoy (10%)
+            <span className="dot" style={{ background: 'var(--bucket-2)' }} aria-hidden="true" /> <strong>Smile</strong> — saving for things you’ll enjoy (10%)
           </li>
           <li>
-            <span className="dot" style={{ background: '#0D9488' }} aria-hidden="true" /> <strong>Splurge</strong> — guilt-free spending (10%)
+            <span className="dot" style={{ background: 'var(--bucket-3)' }} aria-hidden="true" /> <strong>Splurge</strong> — guilt-free spending (10%)
           </li>
           <li>
-            <span className="dot" style={{ background: '#EA580C' }} aria-hidden="true" /> <strong>Fire Extinguisher</strong> — emergency fund, debt and investing (20%)
+            <span className="dot" style={{ background: 'var(--bucket-4)' }} aria-hidden="true" /> <strong>Fire Extinguisher</strong> — emergency fund, debt and investing (20%)
           </li>
         </ul>
         <p className="muted small">You pick a category for each expense and the bucket follows. You can change the percentages any time in Settings.</p>

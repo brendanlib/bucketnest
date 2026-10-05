@@ -2,7 +2,7 @@ import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import type { Services } from '../services/index.js';
 import { authOf } from '../plugins/auth.js';
-import { BooleanQuery, Id, IdParams, Name } from '../lib/schemas.js';
+import { BooleanQuery, Id, IdParams, Name, NonNegativeCents } from '../lib/schemas.js';
 
 export const CategoryResponse = z.object({
   id: z.string(),
@@ -15,6 +15,8 @@ export const CategoryResponse = z.object({
   isSystem: z.boolean(),
   systemKey: z.string().nullable(),
   sortOrder: z.number().int(),
+  forecastMethod: z.enum(['AVG3', 'AVG6', 'AVG12', 'MANUAL']).nullable(),
+  forecastManualCents: z.number().int().nullable(),
   transactionCount: z.number().int().optional(),
 });
 
@@ -70,6 +72,8 @@ export const categoryRoutes =
             isActive: z.boolean().optional(),
             sortOrder: z.number().int().min(0).max(1_000_000).optional(),
             confirmBucketChange: z.boolean().optional(),
+            forecastMethod: z.enum(['AVG3', 'AVG6', 'AVG12', 'MANUAL']).nullish(),
+            forecastManualCents: NonNegativeCents.nullish(),
           }),
           response: { 200: CategoryResponse },
         },
