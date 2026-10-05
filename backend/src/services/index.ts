@@ -16,6 +16,8 @@ import { createDebtService } from './debt.service.js';
 import { createOnboardingService } from './onboarding.service.js';
 import { createNetWorthService } from './networth.service.js';
 import { createReportService } from './report.service.js';
+import { createNotificationService } from './notification.service.js';
+import { createDataService } from './data.service.js';
 
 export function createServices(deps: Deps) {
   const transactions = createTransactionService(deps);
@@ -30,6 +32,8 @@ export function createServices(deps: Deps) {
   const recurring = createRecurringService(deps, transactions);
   const rules = createRuleService(deps, transactions);
   return {
+    notifications: createNotificationService(deps, { recurring, budgets, sinkingFunds, goals }),
+    data: createDataService(deps, accounts),
     netWorth,
     reports: createReportService(deps, { budgets, netWorth, debts, accounts, sinkingFunds, goals, recurring }),
     onboarding: createOnboardingService(deps, budgets),

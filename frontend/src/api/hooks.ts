@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { api, qs } from './client';
-import type { Asset, BudgetActualReport, CalendarItem, DebtReductionItem, ForecastReport, IncomeReport, NetWorthReport, SpendingReport, Onboarding, Account, BalanceHistory, Bucket, Budget, BudgetSummary, Category, Dashboard, Debt, Goal, ImportBatch, Me, Occurrence, Page, PayoffComparison, PayoffPlan, Recurring, Rule, SessionInfo, Settings, SinkingFund, Transaction } from './types';
+import type { AppNotification, NotificationSetting, Asset, BudgetActualReport, CalendarItem, DebtReductionItem, ForecastReport, IncomeReport, NetWorthReport, SpendingReport, Onboarding, Account, BalanceHistory, Bucket, Budget, BudgetSummary, Category, Dashboard, Debt, Goal, ImportBatch, Me, Occurrence, Page, PayoffComparison, PayoffPlan, Recurring, Rule, SessionInfo, Settings, SinkingFund, Transaction } from './types';
 
 export const keys = {
   me: ['me'] as const,
@@ -139,5 +139,14 @@ export const useAssets = () => useQuery({ queryKey: ['assets'], queryFn: async (
 export const useCalendar = (from: string, to: string) =>
   useQuery({ queryKey: ['calendar', from, to], queryFn: async () => (await api.get<{ items: CalendarItem[] }>(`/calendar${qs({ from, to })}`)).items, placeholderData: (p) => p });
 
+export const useNotifications = () =>
+  useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => api.get<{ items: AppNotification[]; unreadCount: number }>('/notifications?limit=30'),
+    refetchInterval: 60_000,
+  });
+export const useNotificationSettings = () =>
+  useQuery({ queryKey: ['notifications', 'settings'], queryFn: () => api.get<{ emailAvailable: boolean; items: NotificationSetting[] }>('/notifications/settings') });
+
 /** Anything that moves money can change balances, budgets, the dashboard and occurrence status. */
-export const MONEY_QUERIES: QueryKey[] = [['transactions'], ['accounts'], ['categories'], ['dashboard'], ['budgets'], ['recurring'], ['imports'], ['sinking-funds'], ['goals'], ['debts'], ['onboarding'], ['reports'], ['assets'], ['calendar']];
+export const MONEY_QUERIES: QueryKey[] = [['transactions'], ['accounts'], ['categories'], ['dashboard'], ['budgets'], ['recurring'], ['imports'], ['sinking-funds'], ['goals'], ['debts'], ['onboarding'], ['reports'], ['assets'], ['calendar'], ['notifications']];

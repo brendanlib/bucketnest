@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 test('register → add account → add transaction → dashboard updates', async ({ page }, testInfo) => {
@@ -38,4 +39,12 @@ test('register → add account → add transaction → dashboard updates', async
   // Data survives a reload (server-side state, not browser storage).
   await page.reload();
   await expect(page.getByRole('article', { name: 'Bills' })).toContainText('$42.50');
+
+  // Alerts live under the bell; a full export includes what was entered.
+  await expect(page.getByRole('button', { name: /^Notifications/ })).toBeVisible();
+  await page.goto('/settings?section=Data');
+  const download = page.waitForEvent('download');
+  await page.getByRole('link', { name: 'Download everything (JSON)' }).click();
+  const data = JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+  expect(data.transactions).toEqual([expect.objectContaining({ description: 'Groceries run' })]);
 });

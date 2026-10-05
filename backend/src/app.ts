@@ -26,6 +26,7 @@ import { importRoutes } from './routes/imports.js';
 import { fireRoutes } from './routes/fire.js';
 import { onboardingRoutes } from './routes/onboarding.js';
 import { reportRoutes } from './routes/reports.js';
+import { notificationRoutes } from './routes/notifications.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -97,6 +98,7 @@ export async function buildApp(opts: BuildOptions): Promise<FastifyInstance> {
         await protectedApi.register(fireRoutes(services));
         await protectedApi.register(onboardingRoutes(services));
         await protectedApi.register(reportRoutes(services));
+        await protectedApi.register(notificationRoutes(services, config));
       });
     },
     { prefix: '/api' },

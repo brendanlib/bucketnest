@@ -6,6 +6,7 @@ import { api } from '../api/client';
 import { useHousehold } from '../lib/household';
 import { getSidebarCollapsed, setSidebarCollapsed } from '../lib/theme';
 import { Modal } from './Modal';
+import { NotificationBell } from './NotificationBell';
 
 interface NavItem {
   to: string;
@@ -116,6 +117,7 @@ export function Layout() {
         <header className="topbar">
           <strong className="truncate">{me?.household.name}</strong>
           <span className="spacer" />
+          <NotificationBell />
           <span className="muted small truncate">{me?.user.name}</span>
           <button type="button" className="btn ghost icon" onClick={logout} aria-label="Log out" title="Log out">
             <Icon name="logout" />

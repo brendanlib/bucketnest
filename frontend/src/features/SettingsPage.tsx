@@ -1,7 +1,10 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import { keys, useApiMutation, useBuckets, useSessions, useSettings } from '../api/hooks';
+import { keys, useApiMutation, useBuckets, useNotificationSettings, useSessions, useSettings } from '../api/hooks';
+import type { NotificationSetting } from '../api/types';
+import { ConfirmDialog } from '../components/Modal';
 import type { Settings } from '../api/types';
 import { PageHeader } from '../components/PageHeader';
 import { ErrorState, FormError, Loading, errorMessage } from '../components/States';
@@ -14,7 +17,7 @@ import { getThemePref, setThemePref, type ThemePref } from '../lib/theme';
 import { strings } from '../locales/en-AU';
 import { PercentageEditor } from './PercentageEditor';
 
-const SECTIONS = ['Budget', 'Localisation', 'Household', 'Security', 'Appearance'] as const;
+const SECTIONS = ['Budget', 'Localisation', 'Notifications', 'Household', 'Security', 'Data', 'Appearance'] as const;
 type Section = (typeof SECTIONS)[number];
 
 function Card({ title, children, description }: { title: string; description?: string; children: ReactNode }) {
@@ -30,7 +33,8 @@ function Card({ title, children, description }: { title: string; description?: s
 }
 
 export function SettingsPage() {
-  const [section, setSection] = useState<Section>('Budget');
+  const [params] = useSearchParams();
+  const [section, setSection] = useState<Section>((SECTIONS as readonly string[]).includes(params.get('section') ?? '') ? (params.get('section') as Section) : 'Budget');
   const settings = useSettings();
   if (settings.isPending) return <Loading />;
   if (settings.isError) return <ErrorState error={settings.error} onRetry={() => settings.refetch()} />;
@@ -48,7 +52,9 @@ export function SettingsPage() {
         {section === 'Budget' ? <BudgetSettings settings={settings.data} /> : null}
         {section === 'Localisation' ? <LocalisationSettings settings={settings.data} /> : null}
         {section === 'Household' ? <HouseholdSettings settings={settings.data} /> : null}
+        {section === 'Notifications' ? <NotificationSettings /> : null}
         {section === 'Security' ? <SecuritySettings /> : null}
+        {section === 'Data' ? <DataSettings settings={settings.data} /> : null}
         {section === 'Appearance' ? <AppearanceSettings /> : null}
       </div>
     </>
@@ -395,6 +401,163 @@ function AppearanceSettings() {
         ))}
       </div>
     </Card>
+    </>
+  );
+}
+
+const NOTIFICATION_LABELS: Record<NotificationSetting['type'], { title: string; help: string; days?: string }> = {
+  UPCOMING_BILL: { title: 'Bills due soon', help: 'A bill or repayment that hasn’t been recorded yet. (Auto-post schedules record themselves.)', days: 'Days before' },
+  OVERSPENDING: { title: 'Near or over budget', help: 'A category reaches the amber threshold, and again if it goes over.' },
+  SINKING_FUND_DEADLINE: { title: 'Sinking fund deadlines', help: 'A fund is due soon and isn’t fully saved yet.', days: 'Days before' },
+  BUDGET_REVIEW: { title: 'New budget period', help: 'At the start of each period, with how the last one went.' },
+  GOAL_MILESTONE: { title: 'Goal milestones', help: 'A goal reaches 25%, 50%, 75% or 100%.' },
+};
+
+function NotificationSettings() {
+  const query = useNotificationSettings();
+  const toast = useToast();
+  const [items, setItems] = useState<NotificationSetting[] | null>(null);
+  const save = useApiMutation((body: unknown) => api.put('/notifications/settings', body), [['notifications']]);
+  useEffect(() => {
+    if (query.data && !items) setItems(query.data.items);
+  }, [query.data, items]);
+  if (query.isPending || !items) return <Loading />;
+  if (query.isError) return <ErrorState error={query.error} />;
+  const set = (type: NotificationSetting['type'], patch: Partial<NotificationSetting>) => setItems(items.map((i) => (i.type === type ? { ...i, ...patch } : i)));
+  return (
+    <Card title="Notifications" description="Alerts appear under the bell at the top of the page. They’re checked whenever you open the app (and hourly in the background), and each one appears only once.">
+      {!query.data.emailAvailable ? <p className="muted small">Email isn’t set up on this server (SMTP in .env), so alerts are in-app only.</p> : null}
+      <div className="stack-sm">
+        {items.map((i) => {
+          const label = NOTIFICATION_LABELS[i.type];
+          return (
+            <div key={i.type} className="list-item" style={{ flexWrap: 'wrap', alignItems: 'flex-start' }}>
+              <label className="checkbox grow" style={{ alignItems: 'flex-start' }}>
+                <input type="checkbox" checked={i.enabled} onChange={(e) => set(i.type, { enabled: e.target.checked })} />
+                <span>
+                  <strong>{label.title}</strong>
+                  <span className="muted small" style={{ display: 'block' }}>{label.help}</span>
+                </span>
+              </label>
+              {label.days ? (
+                <label className="row small" style={{ gap: '0.4rem' }}>
+                  {label.days}
+                  <input className="input right" style={{ width: 70 }} type="number" min={0} max={60} disabled={!i.enabled} value={i.daysBefore ?? ''} onChange={(e) => set(i.type, { daysBefore: e.target.value === '' ? null : Number(e.target.value) })} />
+                </label>
+              ) : null}
+              <label className="checkbox small">
+                <input type="checkbox" disabled={!i.enabled || !query.data.emailAvailable} checked={i.emailEnabled} onChange={(e) => set(i.type, { emailEnabled: e.target.checked })} />
+                Email
+              </label>
+            </div>
+          );
+        })}
+      </div>
+      <div className="form-actions">
+        <button
+          type="button"
+          className="btn primary"
+          disabled={save.isPending}
+          onClick={async () => {
+            try {
+              await save.mutateAsync({ items });
+              toast('Notification settings saved');
+            } catch (err) {
+              toast(errorMessage(err), 'error');
+            }
+          }}
+        >
+          Save
+        </button>
+      </div>
+    </Card>
+  );
+}
+
+const CSV_ENTITIES: { key: string; label: string }[] = [
+  { key: 'transactions', label: 'Transactions (one row per category split)' },
+  { key: 'accounts', label: 'Accounts' },
+  { key: 'categories', label: 'Categories' },
+  { key: 'budget', label: 'Budget plans' },
+  { key: 'recurring', label: 'Recurring schedules' },
+  { key: 'sinking-funds', label: 'Sinking funds' },
+  { key: 'goals', label: 'Goals' },
+  { key: 'debts', label: 'Debts' },
+  { key: 'assets', label: 'Asset valuations' },
+  { key: 'rules', label: 'Rules' },
+];
+
+function DataSettings({ settings }: { settings: Settings }) {
+  const { me } = useHousehold();
+  const [confirming, setConfirming] = useState(false);
+  const [confirmName, setConfirmName] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<unknown>(null);
+  const [busy, setBusy] = useState(false);
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const owner = me?.household.role === 'OWNER';
+  return (
+    <>
+      <Card title="Export your data" description="A copy of everything, to keep or to use elsewhere. It complements, but doesn’t replace, the server’s database backups.">
+        <div className="row wrap">
+          <a className="btn primary" href="/api/export?format=json" download>
+            Download everything (JSON)
+          </a>
+        </div>
+        <div className="stack-sm">
+          <span className="field-label">Or one spreadsheet at a time (CSV)</span>
+          <div className="row wrap">
+            {CSV_ENTITIES.map((e) => (
+              <a key={e.key} className="btn small" href={`/api/export?format=csv&entity=${e.key}`} download>
+                {e.label}
+              </a>
+            ))}
+          </div>
+        </div>
+      </Card>
+      {owner ? (
+        <section className="card stack danger-zone">
+          <div>
+            <h2>Delete household</h2>
+            <p className="muted small" style={{ marginTop: '0.25rem' }}>
+              Permanently deletes “{settings.name}” and every account, transaction, budget and setting in it. Members with no other household lose their login. This can’t be undone — download an export first.
+            </p>
+          </div>
+          <div>
+            <button type="button" className="btn danger" onClick={() => setConfirming(true)}>
+              Delete household…
+            </button>
+          </div>
+        </section>
+      ) : null}
+      {confirming ? (
+        <ConfirmDialog
+          title="Delete this household?"
+          confirmLabel="Delete everything"
+          busy={busy}
+          onCancel={() => setConfirming(false)}
+          onConfirm={async () => {
+            setError(null);
+            setBusy(true);
+            try {
+              await api.delete('/household', { confirmName, password });
+              qc.clear();
+              navigate('/login');
+            } catch (err) {
+              setError(err);
+              setBusy(false);
+            }
+          }}
+          message={
+            <div className="stack">
+              <FormError error={error} />
+              <Field label={`Type “${settings.name}” to confirm`}>{(p) => <input {...p} className="input" value={confirmName} onChange={(e) => setConfirmName(e.target.value)} autoComplete="off" />}</Field>
+              <Field label="Your password">{(p) => <input {...p} className="input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />}</Field>
+            </div>
+          }
+        />
+      ) : null}
     </>
   );
 }

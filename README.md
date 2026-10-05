@@ -2,7 +2,7 @@
 
 A self-hosted household budget app built on the Barefoot Investor bucket method: Bills, Smile, Splurge and Fire Extinguisher. It runs on your own server with `docker compose up -d` and keeps everything in PostgreSQL.
 
-> **Build status: Phase 4 of 6**, plus CSV import and rules from Phase 5. Notifications, data export and the final hardening pass remain. See [Roadmap](#roadmap).
+> **Build status: Phase 5 of 6.** The final hardening pass (security review, accessibility, performance, demo data) remains. See [Roadmap](#roadmap).
 
 ## What works now
 
@@ -76,6 +76,13 @@ A self-hosted household budget app built on the Barefoot Investor bucket method:
   - On first login a welcome screen explains the buckets.
   - A dashboard checklist (accounts, pay, bills, budget, transactions, savings) ticks itself off from your data.
   - Each main page has a short tip until you dismiss it. Dismissals are saved per user; Settings → Appearance → *Show help tips again* brings them back.
+- **Notifications:**
+  - The bell at the top of every page shows bills due soon that aren't recorded yet, categories at the amber threshold or over budget, sinking funds due soon that aren't fully saved, the start of each budget period, and (if turned on) goal milestones at 25/50/75/100%.
+  - Alerts are checked whenever you open the app and hourly in the background, and each one appears only once.
+  - Settings → Notifications turns each type on or off and sets how many days ahead to warn. With SMTP configured, each type can also be emailed to every household member.
+- **Your data:**
+  - Settings → Data downloads everything as one JSON file, or any list (transactions, accounts, categories, budgets, schedules, funds, goals, debts, valuations, rules) as CSV. Transactions export one row per category split. Exports never include passwords or sessions.
+  - The household owner can delete the household and everything in it after typing its name and their password. Members with no other household lose their login.
 - **Settings:** budget period, display frequency, thresholds, currency, locale, time zone, financial year, theme (light, dark or system).
 
 ## Quick start (Ubuntu server)
@@ -136,7 +143,7 @@ This writes `backups/budget-YYYYMMDD-HHMMSS.dump` (readable by your user only), 
 0 2 * * * cd /opt/home-budget && ./scripts/backup.sh
 ```
 
-Copy backups off the server as well. A backup on the same disk won't survive the disk failing. Restore and test-restore steps are in [docs/backup-restore.md](docs/backup-restore.md).
+Copy backups off the server as well. A backup on the same disk won't survive the disk failing. The in-app export (Settings → Data) is useful for spreadsheets but doesn't replace these backups. Restore and test-restore steps are in [docs/backup-restore.md](docs/backup-restore.md).
 
 ## Development
 
@@ -185,8 +192,8 @@ docs/      deployment, backup and restore, data model
 1. **Foundation** ✅ Docker Compose, schema, auth and security, buckets and categories, accounts, transactions, finance core.
 2. **Budget and recurring** ✅ budgets and budget vs actual, dashboard, recurring schedules (post, skip, auto-post), Bills page.
 3. **Fire Extinguisher** ✅ sinking funds, goals, debts with payoff simulation, offsets, extra repayments, payoff order, investments.
-4. **Insight:** reports, forecast, net worth with valuations and snapshots, calendar.
-5. **Automation:** ✅ CSV import and categorisation rules (built early, on request); still to come: notifications, backup/restore polish, data export.
+4. **Insight** ✅ reports, forecast, net worth with valuations and snapshots, calendar.
+5. **Automation** ✅ CSV import and categorisation rules, notifications (in-app and email), data export (JSON and CSV), household deletion.
 6. **Hardening and docs:** OWASP review, accessibility pass, 50,000-transaction performance check, demo data.
 
 Out of scope for v1: bank feeds, multi-currency, public holiday calendars, native apps, live investment prices, and hosting under a subpath.

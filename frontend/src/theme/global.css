@@ -355,3 +355,18 @@ a.btn { text-decoration: none; }
 @media (min-width: 761px) {
   .cal-agenda { display: none; }
 }
+
+/* ── Notifications ─────────────────────────────────── */
+.bell { position: relative; }
+.bell-count { position: absolute; top: 2px; right: 2px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--danger); color: #fff; font-size: 0.7rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; padding: 0 4px; }
+.bell-panel { position: absolute; right: 0; top: calc(100% + 6px); width: min(380px, calc(100vw - 2rem)); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-lg); z-index: 40; }
+.bell-list { max-height: 60vh; overflow-y: auto; }
+.bell-item { display: flex; gap: 0.6rem; align-items: flex-start; width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--border); padding: 0.7rem 0.9rem; cursor: pointer; }
+.bell-item:hover { background: var(--surface-2); }
+.bell-item .dot { margin-top: 0.35rem; }
+.bell-item.unread strong { color: var(--text); }
+.bell-item .grow { flex: 1; min-width: 0; }
+.danger-zone { border-color: var(--danger); }
+@media (max-width: 600px) {
+  .bell-panel { position: fixed; left: 1rem; right: 1rem; top: 3.5rem; width: auto; }
+}

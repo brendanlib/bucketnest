@@ -704,3 +704,22 @@ export interface CalendarItem {
   status: string;
   occurrence: Occurrence | null;
 }
+
+export type NotificationType = 'UPCOMING_BILL' | 'OVERSPENDING' | 'SINKING_FUND_DEADLINE' | 'BUDGET_REVIEW' | 'GOAL_MILESTONE';
+
+export interface AppNotification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  link: string | null;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface NotificationSetting {
+  type: NotificationType;
+  enabled: boolean;
+  daysBefore: number | null;
+  emailEnabled: boolean;
+}

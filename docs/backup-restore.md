@@ -18,7 +18,7 @@ To run it nightly at 02:00, add this to the crontab of the user who owns `/opt/h
 
 **Copy backups somewhere else** (another machine, a NAS, or cloud storage with `rclone` or `restic`). Backups that stay on the server's disk are lost with it.
 
-The in-app data export (Settings → Data, coming in Phase 5) is handy for spreadsheets but is not a substitute for database backups.
+The in-app data export (Settings → Data) is handy for spreadsheets but is not a substitute for database backups.
 
 ## Restore
 

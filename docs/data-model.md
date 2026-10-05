@@ -213,3 +213,24 @@ Each schedule's occurrences (posted ones link to their transaction), sinking fun
 - **Dark mode:** uses `#256ABF`, `#9085E9`, `#1BAF7A`, `#D95926`, which also pass on all pairs.
 - **Contrast relief:** aqua is under 3:1 on white, so every chart that uses it carries labels, a legend or a table view.
 - **Migration:** an earlier default set put Smile and Splurge 3.8 ΔE apart under deuteranopia. Households still on those defaults were migrated to the new set.
+
+## Notifications (spec §14)
+
+- **Identity:** each notification is unique on (household, type, subject, period key), so regenerating never repeats one.
+
+  | Type | Subject | Period key | Fires when |
+  |---|---|---|---|
+  | Bill due soon | schedule + occurrence date | occurrence date | an unrecorded expense or debt-repayment occurrence is due within *days before* (default 3). Auto-post schedules are skipped. |
+  | Near or over budget | category or sinking fund | period start + amber/red | a budget line reaches amber, and again at red, once each per period |
+  | Sinking fund deadline | fund | due date | a fund that isn't fully saved is due within *days before* (default 14), or is already due and short |
+  | New budget period | budget | period start | each new period, once the household has a plan or any income or spending before it |
+  | Goal milestone | goal | 25/50/75/100 | the highest milestone reached (off by default) |
+
+- **When:** an hourly job generates for every household, and opening the notification list generates for that household (concurrent requests share one run).
+- **Email:** only with SMTP configured and email on for the type. Sent to every household member when the notification is created; `emailed_at` records it.
+
+## Export and deletion
+
+- **JSON:** `GET /api/export?format=json` returns `{ format: "home-budget-export", version: 1, … }` with every record in the household. Money is in integer cents. Password hashes, sessions and reset tokens are never included.
+- **CSV:** `GET /api/export?format=csv&entity=…` for transactions (one row per split), accounts, categories, budget, recurring, sinking-funds, goals, debts, assets and rules. These use the same CSV rules as reports.
+- **Deleting a household:** owner only. The owner must type the household name exactly and enter their password. Everything in the household is deleted (cascade). Users left with no household membership are deleted too.
