@@ -236,7 +236,8 @@ export function createRecurringService(deps: Deps, transactions: TransactionServ
 
     async create(householdId: string, input: RecurringInput) {
       await validate(householdId, input);
-      const created = await repo.createRecurring(db, householdId, toData(input));
+      // createdAt comes from the app clock: auto-post never posts occurrences from before it.
+      const created = await repo.createRecurring(db, householdId, { ...toData(input), createdAt: deps.now() });
       return this.get(householdId, created.id);
     },
 
@@ -263,6 +264,7 @@ export function createRecurringService(deps: Deps, transactions: TransactionServ
           autoPost: existing.autoPost,
         });
         const next = await repo.createRecurring(tx, householdId, {
+          createdAt: deps.now(),
           ...toData({ ...input, startDate: newStart }),
           occurrenceCount: input.occurrenceCount ?? remainingCount,
         });

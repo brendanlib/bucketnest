@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { api, qs } from './client';
-import type { Account, BalanceHistory, Bucket, Budget, BudgetSummary, Category, Dashboard, Me, Occurrence, Page, Recurring, SessionInfo, Settings, Transaction } from './types';
+import type { Account, BalanceHistory, Bucket, Budget, BudgetSummary, Category, Dashboard, ImportBatch, Me, Occurrence, Page, Recurring, Rule, SessionInfo, Settings, Transaction } from './types';
 
 export const keys = {
   me: ['me'] as const,
@@ -53,6 +53,7 @@ export interface TransactionQuery {
   maxCents?: number;
   search?: string;
   uncategorised?: boolean;
+  importBatchId?: string;
   sort: string;
   order: 'asc' | 'desc';
 }
@@ -96,5 +97,9 @@ export const useOccurrences = (from: string, to: string) =>
 export const useDashboard = (period?: string, basis?: 'PLANNED' | 'ACTUAL') =>
   useQuery({ queryKey: keys.dashboard(period, basis), queryFn: () => api.get<Dashboard>(`/dashboard${qs({ period, basis })}`), placeholderData: (prev) => prev });
 
+export const useImportBatches = () =>
+  useQuery({ queryKey: ['imports'], queryFn: async () => (await api.get<{ items: ImportBatch[] }>('/import/batches')).items });
+export const useRules = () => useQuery({ queryKey: ['rules'], queryFn: async () => (await api.get<{ items: Rule[] }>('/rules')).items });
+
 /** Anything that moves money can change balances, budgets, the dashboard and occurrence status. */
-export const MONEY_QUERIES: QueryKey[] = [['transactions'], ['accounts'], ['categories'], ['dashboard'], ['budgets'], ['recurring']];
+export const MONEY_QUERIES: QueryKey[] = [['transactions'], ['accounts'], ['categories'], ['dashboard'], ['budgets'], ['recurring'], ['imports']];

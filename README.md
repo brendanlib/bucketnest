@@ -36,6 +36,20 @@ A self-hosted household budget app built on the Barefoot Investor bucket method:
   - Mark paid (pre-filled and editable), skip, edit one occurrence, or edit the series from a date onward.
   - Auto-post records an occurrence on its day, from 02:00 household time.
   - Monthly dates keep their day and clamp at month end. Weekend dates can move to the Friday before or the Monday after.
+- **CSV import:**
+  - Upload a bank export of up to 5 MB.
+  - The column layout is detected, including files with no header, signed amounts or separate debit and credit columns, and several date formats. Each account remembers its layout.
+  - Every row is checked before anything is saved:
+    - duplicates are skipped, so importing the same file twice adds nothing;
+    - rows matching a scheduled bill within ±3 days are recorded as that occurrence (fixed amounts exactly, estimates within ±20%);
+    - rows matching something you entered yourself are linked to it rather than added again;
+    - categorisation rules fill in categories and transfers.
+  - You approve, change or skip each row. With a balance column, the import checks you'll match the statement.
+  - Every import can be undone in one step.
+- **Rules:**
+  - "Description contains WOOLWORTHS → Groceries", with optional amount, account and money-in or money-out conditions. Plain text only, never regex.
+  - Rules run in order and can be tested against recent transactions or applied to uncategorised ones.
+  - When you categorise an imported transaction, the app offers to make a rule.
 - **Bills:** every Bills-bucket schedule, with its next due date, fixed or estimate, and what's been paid this period.
 - **Settings:** budget period, display frequency, thresholds, currency, locale, time zone, financial year, theme (light, dark or system).
 
@@ -147,7 +161,7 @@ docs/      deployment, backup and restore, data model
 2. **Budget and recurring** ✅ budgets and budget vs actual, dashboard, recurring schedules (post, skip, auto-post), Bills page.
 3. **Fire Extinguisher:** sinking funds, goals, debts with payoff simulation, offsets, extra repayments.
 4. **Insight:** reports, forecast, net worth with valuations and snapshots, calendar.
-5. **Automation:** CSV import with duplicate detection, categorisation rules, notifications, data export.
+5. **Automation:** ✅ CSV import and categorisation rules (built early, on request); still to come: notifications, backup/restore polish, data export.
 6. **Hardening and docs:** OWASP review, accessibility pass, 50,000-transaction performance check, demo data.
 
 Out of scope for v1: bank feeds, multi-currency, public holiday calendars, native apps, live investment prices, and hosting under a subpath.

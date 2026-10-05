@@ -268,6 +268,7 @@ model Household {
   importBatches        ImportBatch[]
   notifications        Notification[]
   notificationSettings NotificationSetting[]
+  importLinks          ImportLink[]
 
   @@map("households")
 }
@@ -386,6 +387,7 @@ model Account {
   debt            Debt?
   importProfiles  ImportProfile[]
   importBatches   ImportBatch[]
+  importLinks     ImportLink[]
   rules           CategorisationRule[] @relation("RuleAccount")
   ruleTargets     CategorisationRule[] @relation("RuleTargetAccount")
 
@@ -426,6 +428,7 @@ model Transaction {
   importBatch ImportBatch?          @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
   createdBy   User?                 @relation(fields: [createdById], references: [id], onDelete: SetNull)
   splits      TransactionSplit[]
+  bankRows    ImportLink[]
 
   @@unique([accountId, fingerprint])
   @@unique([recurringId, occurrenceDate])
@@ -764,6 +767,10 @@ model ImportBatch {
   fileName      String            @map("file_name")
   rowCount      Int               @map("row_count")
   importedCount Int               @map("imported_count")
+  mergedCount   Int               @default(0) @map("merged_count")
+  matchedCount  Int               @default(0) @map("matched_count")
+  skippedCount  Int               @default(0) @map("skipped_count")
+  undoneAt      DateTime?         @map("undone_at") @db.Timestamptz(3)
   status        ImportBatchStatus @default(COMMITTED)
   createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -771,9 +778,36 @@ model ImportBatch {
   household    Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
   account      Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
   transactions Transaction[]
+  links        ImportLink[]
 
   @@index([householdId])
   @@map("import_batches")
+}
+
+/// One bank-statement row linked to a transaction, per account side. A transfer
+/// can be linked twice: once from each account's statement.
+model ImportLink {
+  id            String   @id @default(uuid()) @db.Uuid
+  householdId   String   @map("household_id") @db.Uuid
+  transactionId String   @map("transaction_id") @db.Uuid
+  accountId     String   @map("account_id") @db.Uuid
+  fingerprint   String
+  importBatchId String   @map("import_batch_id") @db.Uuid
+  /// True when the row was merged into a transaction that already existed.
+  merged        Boolean  @default(false)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  household   Household   @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  account     Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  importBatch ImportBatch @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, fingerprint])
+  @@unique([transactionId, accountId])
+  @@index([householdId])
+  @@index([importBatchId])
+  @@map("import_links")
 }
 
 // ─── Notifications ───────────────────────────────────────────────────────────

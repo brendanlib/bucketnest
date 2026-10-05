@@ -96,6 +96,7 @@ export const transactionRoutes =
             maxCents: z.coerce.number().pipe(Cents).optional(),
             search: z.string().trim().max(100).optional(),
             uncategorised: BooleanQuery,
+            importBatchId: Id.optional(),
             sort: z.enum(['date', 'amount', 'description', 'payee', 'type', 'account', 'createdAt']).default('date'),
             order: z.enum(['asc', 'desc']).default('desc'),
           }),

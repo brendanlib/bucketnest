@@ -350,3 +350,106 @@ export interface TransactionDraft {
   splits?: { categoryId: string; amountCents: number }[];
   notes?: string | null;
 }
+
+export type DateFormat = 'DD/MM/YYYY' | 'D/M/YY' | 'YYYY-MM-DD' | 'MM/DD/YYYY' | 'DD MMM YYYY';
+export type SignConvention = 'NEGATIVE_IS_DEBIT' | 'POSITIVE_IS_DEBIT' | 'DEBIT_CREDIT_COLUMNS';
+
+export interface ColumnMapping {
+  delimiter: string;
+  hasHeader: boolean;
+  dateFormat: DateFormat;
+  signConvention: SignConvention;
+  dateColumn: number;
+  descriptionColumn: number;
+  amountColumn?: number | null;
+  debitColumn?: number | null;
+  creditColumn?: number | null;
+  balanceColumn?: number | null;
+  payeeColumn?: number | null;
+}
+
+export type ImportAction = 'import' | 'skip' | 'match' | 'merge';
+
+export interface ImportRow {
+  index: number;
+  raw: string[];
+  date: string | null;
+  description: string;
+  payee: string | null;
+  amountCents: number | null;
+  direction: 'debit' | 'credit' | null;
+  balanceCents: number | null;
+  errors: string[];
+  fingerprint: string | null;
+  status: 'error' | 'duplicate' | 'new';
+  duplicateOf: string | null;
+  match: { recurringId: string; occurrenceDate: string; name: string; date: string; amountCents: number } | null;
+  merge: { transactionId: string; date: string; description: string; type: string } | null;
+  suggestion: {
+    type: TransactionType;
+    categoryId: string | null;
+    toAccountId: string | null;
+    fromAccountId: string | null;
+    payee: string | null;
+    notes: string | null;
+    ruleId: string | null;
+    ruleName: string | null;
+  } | null;
+  defaultAction: ImportAction;
+}
+
+export interface ParseResult {
+  accountId: string;
+  mapping: ColumnMapping;
+  profileUsed: boolean;
+  columns: string[];
+  sample: string[][];
+  summary: { total: number; new: number; duplicates: number; errors: number; matched: number; merges: number; categorised: number };
+  balanceCheck: { date: string; statementBalanceCents: number; appBalanceBeforeCents: number; appBalanceAfterCents: number; differenceCents: number } | null;
+  rows: ImportRow[];
+}
+
+export interface ImportDecision {
+  index: number;
+  action: ImportAction;
+  type?: 'EXPENSE' | 'INCOME' | 'REFUND' | 'TRANSFER';
+  categoryId?: string | null;
+  otherAccountId?: string | null;
+}
+
+export interface ImportBatch {
+  id: string;
+  accountId: string;
+  accountName: string;
+  fileName: string;
+  rowCount: number;
+  importedCount: number;
+  matchedCount: number;
+  mergedCount: number;
+  skippedCount: number;
+  status: 'COMMITTED' | 'UNDONE';
+  createdAt: string;
+  undoneAt: string | null;
+}
+
+export interface Rule {
+  id: string;
+  name: string | null;
+  priority: number;
+  matchField: 'DESCRIPTION' | 'PAYEE';
+  matchType: 'CONTAINS' | 'STARTS_WITH' | 'EQUALS';
+  matchValue: string;
+  minAmountCents: number | null;
+  maxAmountCents: number | null;
+  direction: 'ANY' | 'DEBIT' | 'CREDIT';
+  accountId: string | null;
+  accountName: string | null;
+  setCategoryId: string | null;
+  setCategoryName: string | null;
+  setType: 'EXPENSE' | 'INCOME' | 'REFUND' | 'TRANSFER' | null;
+  setToAccountId: string | null;
+  setToAccountName: string | null;
+  setPayee: string | null;
+  addNote: string | null;
+  isActive: boolean;
+}

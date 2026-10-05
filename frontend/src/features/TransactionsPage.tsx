@@ -16,6 +16,19 @@ import { formatDate } from '../lib/format';
 import { useHousehold } from '../lib/household';
 import { strings } from '../locales/en-AU';
 import { TransactionForm } from './TransactionForm';
+import { RuleForm, type RuleDraft } from './RuleForm';
+import { Link } from 'react-router';
+
+/** A merchant-ish prefix of a bank description: "WOOLWORTHS 1234 SYDNEY" → "WOOLWORTHS". */
+export function ruleTextFor(description: string): string {
+  const words = description.trim().split(/\s+/);
+  const lead: string[] = [];
+  for (const w of words) {
+    if (/\d/.test(w) || lead.length >= 3) break;
+    lead.push(w);
+  }
+  return (lead.length ? lead.join(' ') : description).slice(0, 60);
+}
 
 /** Which way money moved, from one account's point of view. Display only. */
 function direction(t: Transaction, accountId?: string): 'in' | 'out' | 'neutral' {
@@ -119,6 +132,7 @@ export function TransactionsPage() {
     maxCents: params.get('maxCents') ? Number(params.get('maxCents')) : undefined,
     search: params.get('search') ?? undefined,
     uncategorised: params.get('uncategorised') === 'true' || undefined,
+    importBatchId: params.get('importBatchId') ?? undefined,
     sort: params.get('sort') ?? 'date',
     order: (params.get('order') as 'asc' | 'desc') ?? 'desc',
   };
@@ -130,6 +144,8 @@ export function TransactionsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [deleting, setDeleting] = useState<Transaction | null>(null);
   const [searchText, setSearchText] = useState(query.search ?? '');
+  const [rulePrompt, setRulePrompt] = useState<{ draft: RuleDraft; categoryName: string; text: string } | null>(null);
+  const [ruleDraft, setRuleDraft] = useState<RuleDraft | null>(null);
 
   const bulk = useApiMutation((body: { action: string; ids: string[]; categoryId?: string }) => api.post<{ deleted: number; updated: number; skipped: number }>('/transactions/bulk', body), MONEY_QUERIES);
   const remove = useApiMutation((id: string) => api.delete(`/transactions/${id}`), MONEY_QUERIES);
@@ -145,7 +161,7 @@ export function TransactionsPage() {
     setSelected(new Set());
   };
 
-  const activeFilters = ['from', 'to', 'accountId', 'bucketId', 'categoryId', 'type', 'minCents', 'maxCents', 'uncategorised'].filter((k) => params.get(k)).length;
+  const activeFilters = ['from', 'to', 'accountId', 'bucketId', 'categoryId', 'type', 'minCents', 'maxCents', 'uncategorised', 'importBatchId'].filter((k) => params.get(k)).length;
   const items = list.data?.items ?? [];
   const totalPages = list.data ? Math.max(1, Math.ceil(list.data.total / list.data.pageSize)) : 1;
   const allSelected = items.length > 0 && items.every((t) => selected.has(t.id));
@@ -243,11 +259,25 @@ export function TransactionsPage() {
         title="Transactions"
         subtitle={list.data ? `${list.data.total.toLocaleString(locale)} transaction${list.data.total === 1 ? '' : 's'}` : undefined}
         actions={
-          <button type="button" className="btn primary" onClick={() => setEditing('new')} disabled={!accounts.data?.length}>
-            <Icon name="plus" /> Add transaction
-          </button>
+          <>
+            <Link to={`/import${query.accountId ? `?accountId=${query.accountId}` : ''}`} className="btn">
+              <Icon name="upload" /> Import CSV
+            </Link>
+            <button type="button" className="btn primary" onClick={() => setEditing('new')} disabled={!accounts.data?.length}>
+              <Icon name="plus" /> Add transaction
+            </button>
+          </>
         }
       />
+      {query.importBatchId ? (
+        <div className="card row small" style={{ marginBottom: '1rem', padding: '0.6rem 1rem' }}>
+          Showing the transactions from one import.
+          <span className="spacer" />
+          <button type="button" className="btn small" onClick={() => update({ importBatchId: undefined })}>
+            Show all
+          </button>
+        </div>
+      ) : null}
 
       <form
         className="row"
@@ -414,7 +444,36 @@ export function TransactionsPage() {
         </nav>
       ) : null}
 
-      {editing ? <TransactionForm transaction={editing === 'new' ? undefined : editing} defaultAccountId={query.accountId} onClose={() => setEditing(null)} /> : null}
+      {editing ? (
+        <TransactionForm
+          transaction={editing === 'new' ? undefined : editing}
+          defaultAccountId={query.accountId}
+          onClose={() => setEditing(null)}
+          onSaved={(saved) => {
+            // Offer a rule when an imported or uncategorised transaction gets a category (spec §13).
+            const before = editing === 'new' ? null : editing;
+            const split = saved.splits.length === 1 ? saved.splits[0] : null;
+            if (before && split && (before.importBatchId || before.uncategorised) && before.splits[0]?.categoryId !== split.categoryId) {
+              const text = ruleTextFor(saved.description);
+              setRulePrompt({ draft: { matchValue: text, setCategoryId: split.categoryId }, categoryName: split.categoryName, text });
+            }
+          }}
+        />
+      ) : null}
+      {rulePrompt ? (
+        <ConfirmDialog
+          title="Create a rule?"
+          message={`Always categorise transactions containing “${rulePrompt.text}” as ${rulePrompt.categoryName}?`}
+          confirmLabel="Create rule"
+          danger={false}
+          onCancel={() => setRulePrompt(null)}
+          onConfirm={() => {
+            setRuleDraft(rulePrompt.draft);
+            setRulePrompt(null);
+          }}
+        />
+      ) : null}
+      {ruleDraft ? <RuleForm draft={ruleDraft} onClose={() => setRuleDraft(null)} /> : null}
       {deleting ? (
         <ConfirmDialog
           title="Delete transaction?"

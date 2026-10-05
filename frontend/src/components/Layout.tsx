@@ -24,12 +24,14 @@ export const NAV: { group: string; items: NavItem[] }[] = [
       { to: '/budget', label: 'Budget', icon: 'budget' },
       { to: '/bills', label: 'Bills', icon: 'bills' },
       { to: '/recurring', label: 'Recurring', icon: 'recurring' },
+      { to: '/import', label: 'Import', icon: 'upload' },
     ],
   },
   {
     group: 'Setup',
     items: [
       { to: '/categories', label: 'Categories', icon: 'categories' },
+      { to: '/rules', label: 'Rules', icon: 'rules' },
       { to: '/settings', label: 'Settings', icon: 'settings' },
     ],
   },

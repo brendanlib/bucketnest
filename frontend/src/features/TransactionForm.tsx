@@ -34,6 +34,7 @@ export function TransactionForm({
   defaultAccountId,
   title,
   submit,
+  onSaved,
   onClose,
 }: {
   transaction?: Transaction;
@@ -43,6 +44,8 @@ export function TransactionForm({
   title?: string;
   /** Overrides where the form is sent, e.g. the occurrence post endpoint. */
   submit?: (body: unknown) => Promise<Transaction>;
+  /** Called with the saved transaction, before the form closes. */
+  onSaved?: (saved: Transaction) => void;
   onClose: () => void;
 }) {
   const { timezone } = useHousehold();
@@ -125,6 +128,7 @@ export function TransactionForm({
     try {
       const saved = await save.mutateAsync(body);
       toast(saved.type !== type ? `Saved as ${strings.transactionTypes[saved.type].toLowerCase()}` : transaction ? 'Transaction saved' : submit ? 'Recorded' : 'Transaction added');
+      onSaved?.(saved);
       onClose();
     } catch {
       /* shown */

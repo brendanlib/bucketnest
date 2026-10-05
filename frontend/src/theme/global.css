@@ -290,3 +290,13 @@ table.table { width: 100%; border-collapse: collapse; }
   .bill-row .grow { flex-basis: 60%; }
   .bill-row .occurrence-actions { flex-basis: 100%; }
 }
+
+/* ── Import ─────────────────────────────────────────── */
+.steps { display: flex; gap: 1rem; list-style: none; padding: 0; margin: 0 0 1rem; flex-wrap: wrap; font-size: 0.9rem; color: var(--text-3); }
+.steps .current { color: var(--primary); font-weight: 650; }
+.dropzone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 2rem 1rem; text-align: center; display: flex; flex-direction: column; gap: 0.75rem; align-items: center; }
+.dropzone.dragging { border-color: var(--primary); background: var(--primary-soft); }
+.warn-border { border-color: var(--warning); }
+.import-table td { vertical-align: top; }
+.import-table select.input { min-height: 34px; padding: 0.3rem 0.5rem; font-size: 0.88rem; }
+tr.row-problem td { background: var(--danger-soft); }

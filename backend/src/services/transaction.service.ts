@@ -2,7 +2,8 @@ import type { Account, Category, Debt, Prisma, TransactionType } from '@prisma/c
 import type { Deps } from './context.js';
 import type { DbTx } from '../db.js';
 import * as repo from '../repositories/transactions.js';
-import { findAccountsByIds } from '../repositories/accounts.js';
+import { balanceMovements, findAccountsByIds } from '../repositories/accounts.js';
+import { calculateAccountBalance } from '../finance/balance.js';
 import { findCategoriesByIds, findCategoryBySystemKey } from '../repositories/categories.js';
 import { listBuckets } from '../repositories/buckets.js';
 import { conflict, notFound, validationError } from '../lib/errors.js';
@@ -46,6 +47,7 @@ export interface ListQuery {
   maxCents?: number;
   search?: string;
   uncategorised?: boolean;
+  importBatchId?: string;
   sort: TransactionSort;
   order: 'asc' | 'desc';
 }
@@ -106,11 +108,20 @@ function defaultRepaymentCategoryKey(account: Account): string {
   }
 }
 
+/** Caches lookups while validating many transactions at once (imports). */
+export type PrepareMemo = Map<string, Promise<unknown>>;
+
 export function createTransactionService(deps: Deps) {
   const { db } = deps;
 
-  async function systemCategory(householdId: string, key: string): Promise<Category> {
-    const c = await findCategoryBySystemKey(db, householdId, key);
+  function memo<T>(m: PrepareMemo | undefined, key: string, load: () => Promise<T>): Promise<T> {
+    if (!m) return load();
+    if (!m.has(key)) m.set(key, load());
+    return m.get(key) as Promise<T>;
+  }
+
+  async function systemCategory(householdId: string, key: string, m?: PrepareMemo): Promise<Category> {
+    const c = await memo(m, `sys:${key}`, () => findCategoryBySystemKey(db, householdId, key));
     if (!c) throw new Error(`System category ${key} is missing for household ${householdId}`);
     return c;
   }
@@ -125,10 +136,12 @@ export function createTransactionService(deps: Deps) {
   async function prepare(
     householdId: string,
     input: TransactionInput,
-    opts: { allowUncategorised?: boolean; existing?: repo.TransactionWithRelations | null } = {},
+    opts: { allowUncategorised?: boolean; existing?: repo.TransactionWithRelations | null; memo?: PrepareMemo } = {},
   ) {
+    const m = opts.memo;
     const ids = [input.accountId, ...(input.toAccountId ? [input.toAccountId] : [])];
-    const accounts = new Map((await findAccountsByIds(db, householdId, ids)).map((a) => [a.id, a as AccountWithDebt]));
+    const accountRows = await Promise.all(ids.map((id) => memo(m, `acct:${id}`, async () => (await findAccountsByIds(db, householdId, [id]))[0])));
+    const accounts = new Map(accountRows.filter((a): a is NonNullable<typeof a> => Boolean(a)).map((a) => [a.id, a as AccountWithDebt]));
     const account = accounts.get(input.accountId);
     if (!account) throw validationError('Unknown account', { field: 'accountId' });
     const toAccount = input.toAccountId ? accounts.get(input.toAccountId) : undefined;
@@ -149,7 +162,7 @@ export function createTransactionService(deps: Deps) {
       if (!goal) throw validationError('Unknown goal', { field: 'goalId' });
     }
 
-    const buckets = await listBuckets(db, householdId);
+    const buckets = await memo(m, 'buckets', () => listBuckets(db, householdId));
     const fireBucketId = buckets.find((b) => b.key === 'FIRE_EXTINGUISHER')!.id;
     const isFire = (a: Account) => a.class === 'ASSET' && a.bucketTagId === fireBucketId;
 
@@ -165,7 +178,7 @@ export function createTransactionService(deps: Deps) {
     }
     if (type === 'INTEREST_CHARGE' && account.class === 'LIABILITY' && account.repaymentTreatment !== 'DEBT_REPAYMENT') {
       type = 'EXPENSE';
-      const fees = await systemCategory(householdId, SYSTEM_CATEGORY.interestAndFees);
+      const fees = await systemCategory(householdId, SYSTEM_CATEGORY.interestAndFees, m);
       requestedSplits = [{ categoryId: fees.id, amountCents: input.amountCents }];
     }
 
@@ -185,7 +198,7 @@ export function createTransactionService(deps: Deps) {
         if (requestedSplits.length === 0 && !opts.allowUncategorised) {
           throw validationError(type === 'INCOME' ? 'Choose an income category' : 'Choose a category', { field: 'splits' });
         }
-        splits = await validateSplits(householdId, requestedSplits, input.amountCents, kind, opts.existing);
+        splits = await validateSplits(householdId, requestedSplits, input.amountCents, kind, opts.existing, m);
         break;
       }
       case 'DEBT_REPAYMENT': {
@@ -197,10 +210,10 @@ export function createTransactionService(deps: Deps) {
           const parts = splitDebtRepayment(input.amountCents, debt ? cents(debt.minRepaymentCents) : null);
           const minCategory = debt?.categoryId
             ? { id: debt.categoryId }
-            : await systemCategory(householdId, defaultRepaymentCategoryKey(toAccount!));
+            : await systemCategory(householdId, defaultRepaymentCategoryKey(toAccount!), m);
           if (parts.minimumCents > 0) splits.push({ categoryId: minCategory.id, amountCents: parts.minimumCents });
           if (parts.extraCents > 0) {
-            const extra = await systemCategory(householdId, SYSTEM_CATEGORY.extraDebtRepayments);
+            const extra = await systemCategory(householdId, SYSTEM_CATEGORY.extraDebtRepayments, m);
             splits.push({ categoryId: extra.id, amountCents: parts.extraCents, isExtraRepayment: true });
           }
         }
@@ -211,9 +224,9 @@ export function createTransactionService(deps: Deps) {
           throw validationError('A savings contribution goes into an account tagged Fire Extinguisher', { field: 'toAccountId' });
         }
         if (requestedSplits.length > 1) throw validationError('A savings contribution has one category', { field: 'splits' });
-        const categoryId = requestedSplits[0]?.categoryId ?? (await systemCategory(householdId, SYSTEM_CATEGORY.savingsContributions)).id;
-        splits = await validateSplits(householdId, [{ categoryId, amountCents: input.amountCents }], input.amountCents, 'EXPENSE', opts.existing);
-        if ((await findCategoriesByIds(db, householdId, [categoryId]))[0]?.bucketId !== fireBucketId) {
+        const categoryId = requestedSplits[0]?.categoryId ?? (await systemCategory(householdId, SYSTEM_CATEGORY.savingsContributions, m)).id;
+        splits = await validateSplits(householdId, [{ categoryId, amountCents: input.amountCents }], input.amountCents, 'EXPENSE', opts.existing, m);
+        if ((await memo(m, `cat:${categoryId}`, async () => (await findCategoriesByIds(db, householdId, [categoryId]))[0]))?.bucketId !== fireBucketId) {
           throw validationError('Choose a Fire Extinguisher category', { field: 'splits' });
         }
         break;
@@ -249,11 +262,13 @@ export function createTransactionService(deps: Deps) {
     amountCents: number,
     kind: 'INCOME' | 'EXPENSE',
     existing?: repo.TransactionWithRelations | null,
+    m?: PrepareMemo,
   ): Promise<repo.SplitInput[]> {
     if (requested.length === 0) return [];
     const ids = requested.map((s) => s.categoryId);
     if (new Set(ids).size !== ids.length) throw validationError('Each category can appear only once in the splits', { field: 'splits' });
-    const categories = new Map((await findCategoriesByIds(db, householdId, ids)).map((c) => [c.id, c]));
+    const found = await Promise.all(ids.map((id) => memo(m, `cat:${id}`, async () => (await findCategoriesByIds(db, householdId, [id]))[0])));
+    const categories = new Map(found.filter((c): c is Category => Boolean(c)).map((c) => [c.id, c]));
     const alreadyUsed = new Set(existing?.splits.map((s) => s.categoryId) ?? []);
     let total = 0;
     for (const [i, s] of requested.entries()) {
@@ -322,6 +337,7 @@ export function createTransactionService(deps: Deps) {
           maxCents: q.maxCents,
           search: q.search,
           uncategorised: q.uncategorised,
+          importBatchId: q.importBatchId,
         },
         { skip: (q.page - 1) * q.pageSize, take: q.pageSize, sort: q.sort, order: q.order },
       );
@@ -353,9 +369,9 @@ export function createTransactionService(deps: Deps) {
       }
     },
 
-    async update(householdId: string, id: string, input: TransactionInput) {
+    async update(householdId: string, id: string, input: TransactionInput, opts: { allowUncategorised?: boolean } = {}) {
       const existing = await loadOrThrow(householdId, id);
-      const { data, splits } = await prepare(householdId, input, { existing });
+      const { data, splits } = await prepare(householdId, input, { existing, allowUncategorised: opts.allowUncategorised });
       await db.$transaction((tx) => repo.updateTransaction(tx, householdId, id, data, splits));
       return this.get(householdId, id);
     },
@@ -398,6 +414,15 @@ export function createTransactionService(deps: Deps) {
     },
 
     countUncategorised: (householdId: string) => repo.countUncategorised(db, householdId),
+
+    /** An account's balance at the end of a date. */
+    async balanceOf(householdId: string, accountId: string, date: string) {
+      const account = (await findAccountsByIds(db, householdId, [accountId]))[0];
+      if (!account) return null;
+      const movements = await balanceMovements(db, householdId, { accountIds: [accountId], asOf: dateIn(date) });
+      const opening = dateIn(date) < account.openingDate ? 0 : cents(account.openingBalanceCents);
+      return calculateAccountBalance(opening, account.class, movements.get(accountId) ?? []);
+    },
   };
 }
 

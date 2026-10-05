@@ -16,6 +16,8 @@ import { DashboardPage } from './features/DashboardPage';
 import { BudgetPage } from './features/BudgetPage';
 import { BillsPage } from './features/BillsPage';
 import { RecurringPage } from './features/RecurringPage';
+import { ImportPage } from './features/ImportPage';
+import { RulesPage } from './features/RulesPage';
 
 function RequireAuth() {
   const me = useMe();
@@ -55,6 +57,8 @@ export function App() {
           <Route path="/budget" element={<BudgetPage />} />
           <Route path="/bills" element={<BillsPage />} />
           <Route path="/recurring" element={<RecurringPage />} />
+          <Route path="/import" element={<ImportPage />} />
+          <Route path="/rules" element={<RulesPage />} />
           <Route path="/transactions" element={<TransactionsPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/accounts/:id" element={<AccountDetailPage />} />

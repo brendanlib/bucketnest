@@ -116,3 +116,21 @@ When generating a future migration with `prisma migrate diff`, check the output 
   - The job holds a PostgreSQL advisory lock, and the unique key makes reruns harmless.
 - **Deleting an auto-posted transaction:** this records a *skip*, so the job doesn't post the occurrence again.
 - **Where schedules are managed:** the Bills page lists Bills-bucket schedules (expenses in Bills categories, plus debt repayments). Income, transfers and every other schedule are managed on the **Recurring** page. The spec's navigation had no page for them, so Recurring was added under Money.
+
+## CSV import (spec §13)
+
+- **Stateless parsing:** `POST /api/import/parse` reads the file, applies the mapping (given, saved for the account, or guessed) and classifies every row. Nothing is stored. `POST /api/import/commit` sends the same file and mapping back with the user's decisions. The server parses again and applies everything in one database transaction, so nothing the browser computed is trusted.
+- **Fingerprints:** hash of account, date, signed amount, normalised description and an index for identical rows on the same day.
+- **Import links:** each imported bank row is recorded in `import_links` as (transaction, account, fingerprint, batch), unique per account.
+  - A transfer between two of your accounts can be linked twice, once from each account's statement. That's why links live in their own table rather than in a single `transactions.fingerprint` column. The `transactions.fingerprint` column is still filled in for transactions an import creates.
+  - Duplicates are rows whose fingerprint already has a link for that account.
+- **Row classification**, in priority order:
+  1. errors, and duplicates (skipped);
+  2. a scheduled occurrence on that account within ±3 days, same direction, fixed amount exact or estimate within ±20% (*match*: recorded as that occurrence, using the bank's date and amount);
+  3. an existing transaction on that account within ±3 days with the same amount and no link from this account yet (*merge*: the bank row is linked to it, and the existing entry is never changed);
+  4. otherwise a new transaction, typed and categorised by the first matching rule. With no rule, money out is an expense; money in is income on asset accounts and a refund on cards and loans.
+
+  Each row and each candidate is paired at most once, closest date first.
+- **Merges with auto-posts:** an auto-posted occurrence that later appears in an import is offered as a merge, so it's counted once.
+- **Undo:** deletes the transactions the batch created (including any edits made to them since) and its remaining links, which are its merges. Pre-existing entries are never deleted. The batch is kept, marked undone.
+- **Limits:** 5 MB and 20,000 rows per file.

@@ -27,6 +27,7 @@ export interface TransactionFilters {
   maxCents?: number;
   search?: string;
   uncategorised?: boolean;
+  importBatchId?: string;
 }
 
 /** Expenses, refunds and income need categories; one with no splits is uncategorised. */
@@ -51,6 +52,7 @@ export function buildTransactionWhere(householdId: string, f: TransactionFilters
       ],
     });
   }
+  if (f.importBatchId) and.push({ OR: [{ importBatchId: f.importBatchId }, { bankRows: { some: { importBatchId: f.importBatchId } } }] });
   if (f.uncategorised) and.push({ type: { in: CATEGORISED_TYPES }, splits: { none: {} } });
   return { AND: and };
 }
