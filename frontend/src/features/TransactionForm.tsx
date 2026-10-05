@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { api, ApiError } from '../api/client';
-import { MONEY_QUERIES, useAccounts, useApiMutation, useBuckets, useCategories } from '../api/hooks';
+import { MONEY_QUERIES, useAccounts, useApiMutation, useBuckets, useCategories, useSinkingFunds } from '../api/hooks';
 import type { Account, Transaction, TransactionDraft, TransactionType } from '../api/types';
 import { Field } from '../components/Field';
 import { Modal } from '../components/Modal';
@@ -52,7 +52,9 @@ export function TransactionForm({
   const accounts = useAccounts(true);
   const categories = useCategories(true);
   const buckets = useBuckets();
+  const funds = useSinkingFunds();
   const toast = useToast();
+  const [fundId, setFundId] = useState(transaction?.splits.find((s) => s.sinkingFundId)?.sinkingFundId ?? draft?.splits?.find((s) => s.sinkingFundId)?.sinkingFundId ?? '');
 
   const [type, setType] = useState<TransactionType>(transaction?.type ?? draft?.type ?? 'EXPENSE');
   const [form, setForm] = useState({
@@ -104,10 +106,11 @@ export function TransactionForm({
     e.preventDefault();
     let bodySplits: { categoryId: string; amountCents: number }[] | undefined;
     if (CATEGORISED.includes(type)) {
+      const fund = type === 'EXPENSE' && fundId ? { sinkingFundId: fundId } : {};
       bodySplits = splitMode
-        ? splits.filter((s) => s.categoryId || s.amountCents).map((s) => ({ categoryId: s.categoryId, amountCents: s.amountCents ?? 0 }))
+        ? splits.filter((s) => s.categoryId || s.amountCents).map((s) => ({ categoryId: s.categoryId, amountCents: s.amountCents ?? 0, ...fund }))
         : splits[0]?.categoryId
-          ? [{ categoryId: splits[0].categoryId, amountCents: form.amountCents ?? 0 }]
+          ? [{ categoryId: splits[0].categoryId, amountCents: form.amountCents ?? 0, ...fund }]
           : [];
     } else if (type === 'SAVINGS_CONTRIBUTION' && splits[0]?.categoryId) {
       bodySplits = [{ categoryId: splits[0].categoryId, amountCents: form.amountCents ?? 0 }];
@@ -306,6 +309,20 @@ export function TransactionForm({
           </p>
         ) : null}
 
+        {type === 'EXPENSE' && (funds.data?.length ?? 0) > 0 ? (
+          <Field label="Paid from sinking fund" hint="Kept in the category’s history, but not counted as overspending this period.">
+            {(p) => (
+              <select {...p} className="input" value={fundId} onChange={(e) => setFundId(e.target.value)}>
+                <option value="">No</option>
+                {funds.data!.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Field>
+        ) : null}
         <Field label="Notes">{(p) => <textarea {...p} className="input" rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />}</Field>
         <label className="checkbox">
           <input type="checkbox" checked={form.cleared} onChange={(e) => setForm({ ...form, cleared: e.target.checked })} />

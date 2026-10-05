@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { api, qs } from './client';
-import type { Account, BalanceHistory, Bucket, Budget, BudgetSummary, Category, Dashboard, ImportBatch, Me, Occurrence, Page, Recurring, Rule, SessionInfo, Settings, Transaction } from './types';
+import type { Account, BalanceHistory, Bucket, Budget, BudgetSummary, Category, Dashboard, Debt, Goal, ImportBatch, Me, Occurrence, Page, PayoffComparison, PayoffPlan, Recurring, Rule, SessionInfo, Settings, SinkingFund, Transaction } from './types';
 
 export const keys = {
   me: ['me'] as const,
@@ -101,5 +101,15 @@ export const useImportBatches = () =>
   useQuery({ queryKey: ['imports'], queryFn: async () => (await api.get<{ items: ImportBatch[] }>('/import/batches')).items });
 export const useRules = () => useQuery({ queryKey: ['rules'], queryFn: async () => (await api.get<{ items: Rule[] }>('/rules')).items });
 
+export const useSinkingFunds = () =>
+  useQuery({ queryKey: ['sinking-funds'], queryFn: async () => (await api.get<{ items: SinkingFund[] }>('/sinking-funds')).items });
+export const useSinkingFund = (id: string) => useQuery({ queryKey: ['sinking-funds', id], queryFn: () => api.get<SinkingFund>(`/sinking-funds/${id}`) });
+export const useGoals = () => useQuery({ queryKey: ['goals'], queryFn: async () => (await api.get<{ items: Goal[] }>('/goals')).items });
+export const useDebts = () => useQuery({ queryKey: ['debts'], queryFn: async () => (await api.get<{ items: Debt[] }>('/debts')).items });
+export const usePayoff = (id: string, extraCents?: number) =>
+  useQuery({ queryKey: ['debts', id, 'payoff', extraCents], queryFn: () => api.get<PayoffComparison>(`/debts/${id}/payoff${qs({ extraCents })}`), placeholderData: (p) => p });
+export const usePayoffPlan = (strategy?: string, extraMonthlyCents?: number) =>
+  useQuery({ queryKey: ['debts', 'plan', strategy, extraMonthlyCents], queryFn: () => api.get<PayoffPlan>(`/debts/plan${qs({ strategy, extraMonthlyCents })}`), placeholderData: (p) => p });
+
 /** Anything that moves money can change balances, budgets, the dashboard and occurrence status. */
-export const MONEY_QUERIES: QueryKey[] = [['transactions'], ['accounts'], ['categories'], ['dashboard'], ['budgets'], ['recurring'], ['imports']];
+export const MONEY_QUERIES: QueryKey[] = [['transactions'], ['accounts'], ['categories'], ['dashboard'], ['budgets'], ['recurring'], ['imports'], ['sinking-funds'], ['goals'], ['debts']];

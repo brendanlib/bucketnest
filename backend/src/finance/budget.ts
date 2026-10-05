@@ -73,6 +73,17 @@ export interface Line extends Variance {
   name: string;
   hasItem: boolean;
   isActive: boolean;
+  /** Set for a sinking fund's line: its contribution is the budget, contributions the actual. */
+  sinkingFundId?: string;
+}
+
+export interface FundLine {
+  sinkingFundId: string;
+  /** The fund's linked category, which places the line in a bucket and group. */
+  categoryId: string;
+  name: string;
+  budgetCents: Cents;
+  actualCents: Cents;
 }
 
 export interface GroupSummary extends Variance {
@@ -107,6 +118,8 @@ export function buildBudgetSummary(input: {
   allocations: Map<string, Cents>;
   thresholds: Thresholds;
   includeEmpty?: boolean;
+  /** Sinking fund lines (spec §9), placed beside their category. */
+  fundLines?: FundLine[];
 }): { buckets: BucketSummary[]; total: Variance } {
   const { thresholds } = input;
   const itemFor = new Map(input.items.map((i) => [i.categoryId, i.periodAmountCents]));
@@ -133,6 +146,14 @@ export function buildBudgetSummary(input: {
           return { categoryId: c.id, name: c.name, hasItem, isActive: c.isActive, ...calculateBudgetVariance(itemFor.get(c.id) ?? 0, actual, thresholds) };
         })
         .filter((l): l is Line => l !== null);
+      for (const f of input.fundLines ?? []) {
+        const c = leaves.find((x) => x.id === f.categoryId);
+        if (c?.bucketId !== b.id) continue;
+        const at = lines.findIndex((l) => l.categoryId === f.categoryId);
+        const line: Line = { categoryId: f.categoryId, name: f.name, hasItem: true, isActive: true, sinkingFundId: f.sinkingFundId, ...calculateBudgetVariance(f.budgetCents, f.actualCents, thresholds) };
+        if (at >= 0) lines.splice(at + 1, 0, line);
+        else lines.push(line);
+      }
 
       const groupIds = [...new Set(lines.map((l) => leaves.find((c) => c.id === l.categoryId)!.parentId))];
       const groups = groupIds

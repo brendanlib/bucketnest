@@ -192,3 +192,22 @@ export function nextOccurrence(
   const list = generateOccurrences(spec, from, addDays(from, horizonDays), exceptions);
   return list.find((o) => !o.skipped && !isPosted(o.occurrenceDate)) ?? null;
 }
+
+/**
+ * The next `count` nominal dates on or after `from`, plus the nominal date just
+ * before them (the start of the first period), for projections like debt payoff.
+ */
+export function nominalSequence(spec: ScheduleSpec, from: DateOnly, count: number): { previous: DateOnly | null; dates: DateOnly[] } {
+  const step = stepOf(spec);
+  const last = lastIndex(spec, step);
+  const first = indexAtOrAfter(spec, step, from);
+  const dates: DateOnly[] = [];
+  for (let k = first; k <= last && dates.length < count; k++) dates.push(nth(spec, step, k));
+  return { previous: first > 0 ? nth(spec, step, first - 1) : null, dates };
+}
+
+/** One step before a date, for a schedule whose first period starts before its start date. */
+export function stepBack(spec: Pick<ScheduleSpec, 'frequency' | 'interval'>, date: DateOnly): DateOnly {
+  const step = stepOf(spec);
+  return step.unit === 'day' ? addDays(date, -step.n) : addMonthsClamped(date, -step.n);
+}

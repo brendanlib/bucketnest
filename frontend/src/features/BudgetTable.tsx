@@ -1,4 +1,5 @@
 import { Fragment } from 'react';
+import { Link } from 'react-router';
 import type { BudgetItem, BudgetLine, BudgetSummary, Variance } from '../api/types';
 import { Money } from '../components/Money';
 import { ProgressBar } from '../components/Progress';
@@ -93,11 +94,15 @@ export function BudgetTable({
                       </tr>
                     ) : null}
                     {g.lines.map((l) => {
-                      const item = items.get(l.categoryId);
+                      const item = l.sinkingFundId ? undefined : items.get(l.categoryId);
                       return (
-                        <tr key={l.categoryId} className={`line-row status-${l.status}`}>
+                        <tr key={l.sinkingFundId ?? l.categoryId} className={`line-row status-${l.status}`}>
                           <td>
-                            {onEditLine ? (
+                            {l.sinkingFundId ? (
+                              <>
+                                <Link to="/sinking-funds">{l.name}</Link> <span className="badge">Sinking fund</span>
+                              </>
+                            ) : onEditLine ? (
                               <button type="button" className="link-btn" onClick={() => onEditLine(l, item)} aria-label={`Edit budget for ${l.name}`}>
                                 {l.name}
                               </button>
@@ -147,14 +152,15 @@ export function BudgetTable({
             ) : null}
             {b.groups.flatMap((g) => g.lines).map((l) => (
               <button
-                key={l.categoryId}
+                key={l.sinkingFundId ?? l.categoryId}
                 type="button"
                 className="card stack-sm"
-                style={{ textAlign: 'left', padding: '0.75rem', cursor: onEditLine ? 'pointer' : undefined }}
-                onClick={() => onEditLine?.(l, items.get(l.categoryId))}
+                style={{ textAlign: 'left', padding: '0.75rem', cursor: onEditLine && !l.sinkingFundId ? 'pointer' : undefined }}
+                onClick={() => !l.sinkingFundId && onEditLine?.(l, items.get(l.categoryId))}
               >
                 <div className="row">
                   <strong>{l.name}</strong>
+                  {l.sinkingFundId ? <span className="badge">Sinking fund</span> : null}
                   <span className="spacer" />
                   <span className={`small ${l.remainingCents < 0 ? 'neg' : 'muted'}`}>
                     <Money cents={Math.abs(l.remainingCents)} /> {l.remainingCents < 0 ? 'over' : 'left'}

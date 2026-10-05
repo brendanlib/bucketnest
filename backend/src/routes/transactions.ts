@@ -36,6 +36,7 @@ export const TransactionResponse = z.object({
       amountCents: z.number().int(),
       isExtraRepayment: z.boolean(),
       isSinkingFundPayment: z.boolean(),
+      sinkingFundId: z.string().nullable(),
     }),
   ),
   buckets: z.array(z.object({ id: z.string(), key: z.string(), name: z.string(), colour: z.string() })),
@@ -61,7 +62,7 @@ export const TransactionBody = z.strictObject({
   toAccountId: Id.nullish(),
   direction: z.enum(['INCREASE', 'DECREASE']).nullish(),
   splits: z
-    .array(z.strictObject({ categoryId: Id, amountCents: PositiveCents, isSinkingFundPayment: z.boolean().optional() }))
+    .array(z.strictObject({ categoryId: Id, amountCents: PositiveCents, sinkingFundId: Id.nullish() }))
     .max(50)
     .optional(),
   notes: OptionalText(2000),

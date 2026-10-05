@@ -72,7 +72,7 @@ const SummaryResponse = z.object({
           ...Variance,
           groupId: z.string().nullable(),
           name: z.string(),
-          lines: z.array(z.object({ ...Variance, categoryId: z.string(), name: z.string(), hasItem: z.boolean(), isActive: z.boolean() })),
+          lines: z.array(z.object({ ...Variance, categoryId: z.string(), name: z.string(), hasItem: z.boolean(), isActive: z.boolean(), sinkingFundId: z.string().optional() })),
         }),
       ),
     }),

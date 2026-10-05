@@ -10,14 +10,25 @@ import { createBudgetService } from './budget.service.js';
 import { createDashboardService } from './dashboard.service.js';
 import { createRuleService } from './rule.service.js';
 import { createImportService } from './import.service.js';
+import { createSinkingFundService } from './sinking-fund.service.js';
+import { createGoalService } from './goal.service.js';
+import { createDebtService } from './debt.service.js';
 
 export function createServices(deps: Deps) {
   const transactions = createTransactionService(deps);
   const accounts = createAccountService(deps);
-  const budgets = createBudgetService(deps);
+  // eslint-disable-next-line prefer-const
+  let sinkingFunds: ReturnType<typeof createSinkingFundService>;
+  const budgets = createBudgetService(deps, () => sinkingFunds);
+  sinkingFunds = createSinkingFundService(deps, transactions);
+  const goals = createGoalService(deps, transactions);
+  const debts = createDebtService(deps, { transactions, budgets });
   const recurring = createRecurringService(deps, transactions);
   const rules = createRuleService(deps, transactions);
   return {
+    sinkingFunds,
+    goals,
+    debts,
     rules,
     imports: createImportService(deps, { transactions, recurring, rules }),
     auth: createAuthService(deps),
@@ -28,7 +39,7 @@ export function createServices(deps: Deps) {
     transactions,
     budgets,
     recurring,
-    dashboard: createDashboardService(deps, { budgets, recurring, accounts, transactions }),
+    dashboard: createDashboardService(deps, { budgets, recurring, accounts, transactions, sinkingFunds, goals }),
   };
 }
 

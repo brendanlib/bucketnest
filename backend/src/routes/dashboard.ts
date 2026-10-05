@@ -42,7 +42,9 @@ const DashboardResponse = z.object({
           investmentCents: z.number().int(),
           extraRepaymentsCents: z.number().int(),
           principalReducedCents: z.number().int(),
-          goals: z.array(z.unknown()),
+          goals: z.array(
+            z.object({ id: z.string(), name: z.string(), type: z.string(), targetCents: z.number().int(), currentCents: z.number().int(), progressPercent: z.number().nullable(), onTrack: z.boolean().nullable() }),
+          ),
         })
         .optional(),
     }),
@@ -60,6 +62,18 @@ const DashboardResponse = z.object({
       remainingCents: z.number().int(),
       percentUsed: z.number().nullable(),
       status: z.enum(['amber', 'red']),
+    }),
+  ),
+  watch: z.array(
+    z.object({
+      kind: z.enum(['sinking_fund', 'goal']),
+      id: z.string(),
+      name: z.string(),
+      date: z.string().nullable(),
+      targetCents: z.number().int(),
+      currentCents: z.number().int(),
+      shortfallCents: z.number().int(),
+      status: z.enum(['due_soon', 'due_short', 'behind']),
     }),
   ),
   netWorth: z.object({

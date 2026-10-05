@@ -74,6 +74,30 @@ describe('buildBudgetSummary', () => {
     expect(result.total).toMatchObject({ budgetCents: 312000, actualCents: 78700 });
   });
 
+  it('places sinking fund lines beside their category', () => {
+    const result = buildBudgetSummary({
+      categories,
+      buckets,
+      items: [{ categoryId: 'groceries', periodAmountCents: 1000 }],
+      spending: new Map(),
+      allocations: new Map(),
+      thresholds: t,
+      fundLines: [
+        { sinkingFundId: 'f1', categoryId: 'groceries', name: 'Christmas food', budgetCents: 5000, actualCents: 5000 },
+        { sinkingFundId: 'f2', categoryId: 'pet', name: 'Vet fund', budgetCents: 2000, actualCents: 0 },
+        { sinkingFundId: 'f3', categoryId: 'salary', name: 'Ignored', budgetCents: 1, actualCents: 1 },
+      ],
+    });
+    const food = result.buckets[0]!.groups.find((g) => g.name === 'Food')!;
+    expect(food.lines.map((l) => [l.name, l.sinkingFundId ?? null])).toEqual([
+      ['Groceries', null],
+      ['Christmas food', 'f1'],
+      ['Vet fund', 'f2'],
+    ]);
+    expect(food).toMatchObject({ budgetCents: 8000, actualCents: 5000 });
+    expect(result.total.budgetCents).toBe(8000);
+  });
+
   it('can include every active category with no activity', () => {
     const result = buildBudgetSummary({ categories, buckets, items: [], spending: new Map(), allocations: new Map(), thresholds: t, includeEmpty: true });
     const names = result.buckets.flatMap((b) => b.groups.flatMap((g) => g.lines.map((l) => l.name)));

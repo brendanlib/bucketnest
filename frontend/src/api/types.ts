@@ -82,6 +82,7 @@ export interface Split {
   amountCents: number;
   isExtraRepayment: boolean;
   isSinkingFundPayment: boolean;
+  sinkingFundId: string | null;
 }
 
 export interface Transaction {
@@ -205,6 +206,7 @@ export interface BudgetLine extends Variance {
   name: string;
   hasItem: boolean;
   isActive: boolean;
+  sinkingFundId?: string;
 }
 
 export interface BudgetGroup extends Variance {
@@ -315,7 +317,13 @@ export interface DashboardBucket {
   status: BudgetStatus;
   plannedCents: number;
   overAllocatedCents: number;
-  fire?: { savingsCents: number; investmentCents: number; extraRepaymentsCents: number; principalReducedCents: number; goals: unknown[] };
+  fire?: {
+    savingsCents: number;
+    investmentCents: number;
+    extraRepaymentsCents: number;
+    principalReducedCents: number;
+    goals: { id: string; name: string; type: string; targetCents: number; currentCents: number; progressPercent: number | null; onTrack: boolean | null }[];
+  };
 }
 
 export interface Dashboard {
@@ -334,6 +342,7 @@ export interface Dashboard {
   buckets: DashboardBucket[];
   billsDue: Occurrence[];
   alerts: { categoryId: string; name: string; bucketKey: string; bucketName: string; colour: string; budgetCents: number; actualCents: number; remainingCents: number; percentUsed: number | null; status: 'amber' | 'red' }[];
+  watch: { kind: 'sinking_fund' | 'goal'; id: string; name: string; date: string | null; targetCents: number; currentCents: number; shortfallCents: number; status: 'due_soon' | 'due_short' | 'behind' }[];
   netWorth: { assetsCents: number; liabilitiesCents: number; netWorthCents: number; date: string; history: { date: string; netWorthCents: number }[] };
   uncategorisedCount: number;
 }
@@ -347,7 +356,7 @@ export interface TransactionDraft {
   type: TransactionType;
   accountId: string;
   toAccountId?: string | null;
-  splits?: { categoryId: string; amountCents: number }[];
+  splits?: { categoryId: string; amountCents: number; sinkingFundId?: string | null }[];
   notes?: string | null;
 }
 
@@ -452,4 +461,142 @@ export interface Rule {
   setPayee: string | null;
   addNote: string | null;
   isActive: boolean;
+}
+
+export interface SinkingFund {
+  id: string;
+  name: string;
+  targetCents: number;
+  dueDate: string;
+  targetSource: 'schedule' | 'fund';
+  ownTargetCents: number;
+  ownDueDate: string;
+  contributionFrequency: Frequency;
+  contributionInterval: number | null;
+  contributionAnchorDate: string;
+  accountId: string | null;
+  accountName: string | null;
+  categoryId: string | null;
+  categoryName: string | null;
+  bucketKey: BucketKey | null;
+  recurringId: string | null;
+  recurringName: string | null;
+  repeats: boolean;
+  manualCurrentCents: number | null;
+  isActive: boolean;
+  notes: string | null;
+  currentCents: number;
+  currentSource: 'account' | 'contributions';
+  contributionsCents: number;
+  paymentsCents: number;
+  remainingCents: number;
+  progressPercent: number | null;
+  datesLeft: number;
+  recommendedContributionCents: number;
+  status: 'funded' | 'on_track' | 'due_soon' | 'due_short';
+  shortfallCents: number;
+  contributions?: { id: string; date: string; amountCents: number; transactionId: string | null; notes: string | null }[];
+}
+
+export interface Goal {
+  id: string;
+  name: string;
+  type: 'EMERGENCY_FUND' | 'SAVINGS' | 'INVESTMENT';
+  targetCents: number;
+  targetDate: string | null;
+  priority: number;
+  accountId: string | null;
+  accountName: string | null;
+  manualCurrentCents: number | null;
+  contributionCents: number | null;
+  contributionFrequency: Frequency | null;
+  contributionInterval: number | null;
+  isActive: boolean;
+  notes: string | null;
+  currentCents: number;
+  currentSource: 'account' | 'manual';
+  contributedCents: number;
+  progressPercent: number | null;
+  remainingCents: number;
+  reached: boolean;
+  requiredContributionCents: number | null;
+  projectedDate: string | null;
+  onTrack: boolean | null;
+}
+
+export type DebtWarning = 'REPAYMENT_TOO_LOW' | 'NOT_WITHIN_LIMIT' | null;
+
+export interface Debt {
+  id: string;
+  accountId: string;
+  accountName: string;
+  accountType: AccountType;
+  originalBalanceCents: number;
+  currentBalanceCents: number;
+  annualRate: string;
+  minRepaymentCents: number;
+  repaymentFrequency: Frequency;
+  repaymentInterval: number | null;
+  extraRepaymentCents: number;
+  dueDay: number | null;
+  startDate: string | null;
+  categoryId: string | null;
+  categoryName: string | null;
+  indexationOnly: boolean;
+  includeInPayoff: boolean;
+  offsetAccounts: { id: string; name: string }[];
+  offsetCents: number;
+  repaidCents: number;
+  percentRepaid: number | null;
+  principalReducedThisPeriodCents: number;
+  nextInterestCents: number;
+  payoffDate: string | null;
+  totalInterestCents: number;
+  repayments: number;
+  warning: DebtWarning;
+  minimumOnlyPayoffDate: string | null;
+  minimumOnlyInterestCents: number;
+}
+
+export interface DebtPeriod {
+  date: string;
+  openingCents: number;
+  interestCents: number;
+  paymentCents: number;
+  principalCents: number;
+  closingCents: number;
+}
+
+export interface PayoffResult {
+  paidOff: boolean;
+  warning: DebtWarning;
+  payoffDate: string | null;
+  totalInterestCents: number;
+  repayments: number;
+  nextInterestCents: number;
+  schedule: DebtPeriod[];
+}
+
+export interface PayoffComparison {
+  debtId: string;
+  accountName: string;
+  balanceCents: number;
+  offsetCents: number;
+  extraCents: number;
+  monthsSaved: number | null;
+  interestSavedCents: number | null;
+  minimum: PayoffResult;
+  withExtra: PayoffResult;
+}
+
+export interface PayoffPlan {
+  strategy: 'SNOWBALL' | 'AVALANCHE';
+  order: string[];
+  debtFreeDate: string | null;
+  totalInterestCents: number;
+  months: number;
+  extraMonthlyCents: number;
+  debts: { id: string; name: string; balanceCents: number; annualRate: string; payoffDate: string | null; interestCents: number }[];
+  timeline: { date: string; balanceCents: number }[];
+  alternative: { strategy: string; debtFreeDate: string | null; totalInterestCents: number };
 }

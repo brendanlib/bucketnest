@@ -23,8 +23,16 @@ export const NAV: { group: string; items: NavItem[] }[] = [
       { to: '/accounts', label: 'Accounts', icon: 'accounts' },
       { to: '/budget', label: 'Budget', icon: 'budget' },
       { to: '/bills', label: 'Bills', icon: 'bills' },
+      { to: '/sinking-funds', label: 'Sinking Funds', icon: 'jar' },
       { to: '/recurring', label: 'Recurring', icon: 'recurring' },
       { to: '/import', label: 'Import', icon: 'upload' },
+    ],
+  },
+  {
+    group: 'Fire Extinguisher',
+    items: [
+      { to: '/fire-extinguisher', label: 'Fire Extinguisher', icon: 'shield' },
+      { to: '/debts', label: 'Debts', icon: 'debt' },
     ],
   },
   {

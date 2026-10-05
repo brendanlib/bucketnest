@@ -2,7 +2,7 @@
 
 A self-hosted household budget app built on the Barefoot Investor bucket method: Bills, Smile, Splurge and Fire Extinguisher. It runs on your own server with `docker compose up -d` and keeps everything in PostgreSQL.
 
-> **Build status: Phase 2 of 6.** Foundation plus budgets, the dashboard, recurring schedules and the Bills page. Sinking funds, goals and debt modelling are Phase 3. See [Roadmap](#roadmap).
+> **Build status: Phase 3 of 6**, plus CSV import and rules from Phase 5. Reports, forecasts, the calendar and full net worth are Phase 4. See [Roadmap](#roadmap).
 
 ## What works now
 
@@ -36,6 +36,19 @@ A self-hosted household budget app built on the Barefoot Investor bucket method:
   - Mark paid (pre-filled and editable), skip, edit one occurrence, or edit the series from a date onward.
   - Auto-post records an occurrence on its day, from 02:00 household time.
   - Monthly dates keep their day and clamp at month end. Weekend dates can move to the Friday before or the Monday after.
+- **Sinking funds:**
+  - Save for irregular bills. Each fund recommends how much to put aside each pay, counted from the actual dates left and rounded up so you reach the target.
+  - Link a recurring bill and the target and due date follow it, rolling forward after each payment.
+  - Contributions are the fund's budget line. A bill marked "paid from sinking fund" stays in the category's history but doesn't show as overspending.
+- **Fire Extinguisher goals:** emergency fund, savings and investment goals, in priority order. Each shows progress, the contribution needed to hit its date, and a projected completion date. Investment and super accounts are listed alongside.
+- **Debts:**
+  - A profile on each card or loan account, with interest charged daily.
+  - Offset accounts are included.
+  - You're warned when a repayment doesn't cover the interest.
+  - Minimum-only and with-extra projections are compared, with time and interest saved, a chart and the full repayment schedule.
+  - A snowball or avalanche payoff plan rolls each cleared debt's repayment into the next.
+  - HECS/HELP is indexed yearly and left out of the payoff plan by default.
+  - All results are labelled as estimates.
 - **CSV import:**
   - Upload a bank export of up to 5 MB.
   - The column layout is detected, including files with no header, signed amounts or separate debit and credit columns, and several date formats. Each account remembers its layout.
@@ -159,7 +172,7 @@ docs/      deployment, backup and restore, data model
 
 1. **Foundation** ✅ Docker Compose, schema, auth and security, buckets and categories, accounts, transactions, finance core.
 2. **Budget and recurring** ✅ budgets and budget vs actual, dashboard, recurring schedules (post, skip, auto-post), Bills page.
-3. **Fire Extinguisher:** sinking funds, goals, debts with payoff simulation, offsets, extra repayments.
+3. **Fire Extinguisher** ✅ sinking funds, goals, debts with payoff simulation, offsets, extra repayments, payoff order, investments.
 4. **Insight:** reports, forecast, net worth with valuations and snapshots, calendar.
 5. **Automation:** ✅ CSV import and categorisation rules (built early, on request); still to come: notifications, backup/restore polish, data export.
 6. **Hardening and docs:** OWASP review, accessibility pass, 50,000-transaction performance check, demo data.

@@ -18,6 +18,9 @@ import { BillsPage } from './features/BillsPage';
 import { RecurringPage } from './features/RecurringPage';
 import { ImportPage } from './features/ImportPage';
 import { RulesPage } from './features/RulesPage';
+import { SinkingFundsPage } from './features/SinkingFundsPage';
+import { FireExtinguisherPage } from './features/FireExtinguisherPage';
+import { DebtsPage, DebtDetailPage } from './features/DebtsPage';
 
 function RequireAuth() {
   const me = useMe();
@@ -59,6 +62,10 @@ export function App() {
           <Route path="/recurring" element={<RecurringPage />} />
           <Route path="/import" element={<ImportPage />} />
           <Route path="/rules" element={<RulesPage />} />
+          <Route path="/sinking-funds" element={<SinkingFundsPage />} />
+          <Route path="/fire-extinguisher" element={<FireExtinguisherPage />} />
+          <Route path="/debts" element={<DebtsPage />} />
+          <Route path="/debts/:id" element={<DebtDetailPage />} />
           <Route path="/transactions" element={<TransactionsPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/accounts/:id" element={<AccountDetailPage />} />

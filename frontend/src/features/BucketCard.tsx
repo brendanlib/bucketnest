@@ -60,6 +60,19 @@ export function BucketCard({ bucket }: { bucket: DashboardBucket }) {
           </div>
         </dl>
       ) : null}
+      {fire && bucket.fire?.goals.length ? (
+        <div className="stack-sm small" style={{ gap: '0.3rem' }}>
+          {bucket.fire.goals.map((g) => (
+            <div key={g.id} className="row" style={{ gap: '0.5rem' }}>
+              <span className="truncate" style={{ flex: 1 }}>
+                {g.name}
+              </span>
+              <span className="num muted">{g.progressPercent !== null ? `${Math.min(g.progressPercent, 999).toFixed(0)}%` : '—'}</span>
+              {g.onTrack === false ? <span className="badge warn">Behind</span> : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
       {bucket.overAllocatedCents > 0 ? (
         <p className="small warn-text">
           Planned <Money cents={bucket.plannedCents} /> — over-allocated by <Money cents={bucket.overAllocatedCents} />

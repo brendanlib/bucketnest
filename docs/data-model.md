@@ -134,3 +134,42 @@ When generating a future migration with `prisma migrate diff`, check the output 
 - **Merges with auto-posts:** an auto-posted occurrence that later appears in an import is offered as a merge, so it's counted once.
 - **Undo:** deletes the transactions the batch created (including any edits made to them since) and its remaining links, which are its merges. Pre-existing entries are never deleted. The batch is kept, marked undone.
 - **Limits:** 5 MB and 20,000 rows per file.
+
+## Sinking funds (spec §9)
+
+- **Target and due date:**
+  - A fund linked to a recurring bill uses that bill's next unpaid, unskipped occurrence. After the bill is paid, the next occurrence takes over, so the fund rolls forward by itself.
+  - An unlinked fund uses its own target and due date. If it repeats, the due date moves forward a year at a time once it has passed.
+- **Current amount:** the linked account's balance; or, with no account, "already saved" plus contributions minus payments made from the fund.
+- **Contributions:** each is a row in `sinking_fund_contributions`.
+  - Moving money into the fund's account records a transfer and links it.
+  - Deleting that transfer also removes the contribution.
+- **Recommended contribution:** what is left to save ÷ the contribution dates (on the fund's own pattern from its anchor date) from today until the day before it is due, rounded up to the cent.
+- **Statuses:** *funded*, *due soon* (within 30 days, not funded), *due — short by $X* (due date reached, not funded), otherwise *on track*.
+- **In the budget:**
+  - A fund with a category gets its own budget line in that category's group. The budget is the recommended contribution converted to the budget period; the actual is the contributions made in that period.
+  - The recommended contribution is today's figure, even when you look at a past period.
+- **Paying the bill:** a split with `sinking_fund_id` set counts as a payment from the fund. It is excluded from period variance but still appears in the category's history.
+
+## Goals (spec §10)
+
+- **Current amount:** the linked account's balance, or a figure entered by hand.
+- **Contributions:** counted on the goal's frequency from the day it was created.
+- **Required contribution:** what is left ÷ the contribution dates up to and including the target date, rounded up.
+- **Projected date:** the date of the contribution that reaches the target at the current amount.
+- **Behind:** a goal is behind when its projected date is after its target date.
+- **Priority:** sets the display order and which goal gets spare Fire Extinguisher money first.
+
+## Debts (spec §10)
+
+- **Profile:** a debt profile sits on a liability account. The balance is always the account's balance.
+- **Repayment dates:** monthly, quarterly and annual debts with a due day repay on that day (clamped at month end). Other frequencies follow a repayment date.
+- **Interest:** per period = (balance − linked offset balances, floored at 0) × annual rate × days in period ÷ 365, rounded to the cent each period.
+  - Repayments that don't exceed the first period's interest return *not paid off at this repayment*.
+  - Simulations stop at 600 periods.
+- **HECS/HELP:** indexed once a year on 1 June instead of charging interest.
+- **This period:** principal reduced = repayments into the account − interest charged on it, from actual transactions in the current budget period.
+- **Payoff plan:**
+  - The plan simulates monthly. Every debt is paid its minimum, converted to a monthly amount.
+  - On top of that, the debts' extras (or an amount you choose) go to the debts in strategy order: snowball takes the smallest starting balance first, avalanche the highest rate. That order is fixed at the start.
+  - A cleared debt's repayment joins the pool.

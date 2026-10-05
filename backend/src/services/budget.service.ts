@@ -60,7 +60,13 @@ export async function incomeSources(deps: Deps, householdId: string, period: Per
     .map((r) => ({ amountCents: cents(r.amountCents), frequency: r.frequency, interval: r.interval }));
 }
 
-export function createBudgetService(deps: Deps) {
+/** Sinking fund figures the budget needs; provided lazily to avoid a service cycle. */
+export interface FundSource {
+  list(householdId: string): Promise<{ id: string; name: string; categoryId: string | null; recommendedContributionCents: number; contributionFrequency: Frequency; contributionInterval: number | null }[]>;
+  contributionsBetween(householdId: string, from: string, to: string): Promise<Map<string, number>>;
+}
+
+export function createBudgetService(deps: Deps, funds: () => FundSource) {
   const { db } = deps;
 
   async function loadOrThrow(householdId: string, id: string) {
@@ -130,7 +136,19 @@ export function createBudgetService(deps: Deps) {
     );
 
     const thresholds = { amber: household.amberThreshold.toString(), red: household.redThreshold.toString() };
+    // Each sinking fund's recommended contribution is a budget line; contributions in the period are its actual.
+    const [fundList, fundActuals] = await Promise.all([funds().list(householdId), funds().contributionsBetween(householdId, period.start, period.end)]);
+    const fundLines = fundList
+      .filter((f) => f.categoryId)
+      .map((f) => ({
+        sinkingFundId: f.id,
+        categoryId: f.categoryId!,
+        name: f.name,
+        budgetCents: convertFrequency(f.recommendedContributionCents, { frequency: f.contributionFrequency, interval: f.contributionInterval }, periodFreq),
+        actualCents: fundActuals.get(f.id) ?? 0,
+      }));
     const summary = buildBudgetSummary({
+      fundLines,
       categories: categories.map((c) => ({ ...c, kind: c.kind })),
       buckets: buckets.map((b) => ({ id: b.id, key: b.key, name: b.name, colour: b.colour, sortOrder: b.sortOrder })),
       items: items.filter((i) => kindOf.get(i.categoryId) === 'EXPENSE'),
@@ -180,9 +198,15 @@ export function createBudgetService(deps: Deps) {
     };
   }
 
+  /** The period of a budget containing a date. */
+  async function periodOf(householdId: string, budget: BudgetWithItems, date: string) {
+    return periodContaining(budget.periodType, dateOut(budget.anchorDate), date);
+  }
+
   return {
     ensureActive,
     summarise,
+    periodOf,
 
     async list(householdId: string) {
       await ensureActive(householdId);

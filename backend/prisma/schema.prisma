@@ -185,24 +185,24 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  sessions       Session[]
-  resetTokens    PasswordResetToken[]
-  memberships    HouseholdMember[]
-  transactions   Transaction[]
+  sessions     Session[]
+  resetTokens  PasswordResetToken[]
+  memberships  HouseholdMember[]
+  transactions Transaction[]
 
   @@map("users")
 }
 
 model Session {
-  id          String   @id @default(uuid()) @db.Uuid
+  id         String   @id @default(uuid()) @db.Uuid
   /// HMAC-SHA256 of the opaque cookie value. The raw value is never stored.
-  tokenHash   String   @unique @map("token_hash")
-  userId      String   @map("user_id") @db.Uuid
-  expiresAt   DateTime @map("expires_at") @db.Timestamptz(3)
-  lastSeenAt  DateTime @default(now()) @map("last_seen_at") @db.Timestamptz(3)
-  userAgent   String?  @map("user_agent")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tokenHash  String   @unique @map("token_hash")
+  userId     String   @map("user_id") @db.Uuid
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(3)
+  lastSeenAt DateTime @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -227,48 +227,49 @@ model PasswordResetToken {
 }
 
 model Household {
-  id                   String           @id @default(uuid()) @db.Uuid
-  name                 String
-  currency             String           @default("AUD") @db.Char(3)
-  locale               String           @default("en-AU")
-  timezone             String           @default("Australia/Sydney")
+  id                 String             @id @default(uuid()) @db.Uuid
+  name               String
+  currency           String             @default("AUD") @db.Char(3)
+  locale             String             @default("en-AU")
+  timezone           String             @default("Australia/Sydney")
   /// 1–12. Australia: 7 (July).
-  fyStartMonth         Int              @default(7) @map("fy_start_month") @db.SmallInt
+  fyStartMonth       Int                @default(7) @map("fy_start_month") @db.SmallInt
   /// ISO weekday 1 (Monday) – 7 (Sunday).
-  weekStartDay         Int              @default(1) @map("week_start_day") @db.SmallInt
-  budgetPeriodType     BudgetPeriodType @default(MONTHLY) @map("budget_period_type")
-  budgetAnchorDate     DateTime         @default(dbgenerated("CURRENT_DATE")) @map("budget_anchor_date") @db.Date
-  displayFrequency     Frequency        @default(MONTHLY) @map("display_frequency")
-  allocationBasis      AllocationBasis  @default(PLANNED) @map("allocation_basis")
-  amberThreshold       Decimal          @default(90) @map("amber_threshold") @db.Decimal(5, 2)
-  redThreshold         Decimal          @default(100) @map("red_threshold") @db.Decimal(5, 2)
-  debtPayoffStrategy   DebtPayoffStrategy @default(SNOWBALL) @map("debt_payoff_strategy")
-  gstEnabled           Boolean          @default(false) @map("gst_enabled")
-  createdAt            DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt            DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  weekStartDay       Int                @default(1) @map("week_start_day") @db.SmallInt
+  budgetPeriodType   BudgetPeriodType   @default(MONTHLY) @map("budget_period_type")
+  budgetAnchorDate   DateTime           @default(dbgenerated("CURRENT_DATE")) @map("budget_anchor_date") @db.Date
+  displayFrequency   Frequency          @default(MONTHLY) @map("display_frequency")
+  allocationBasis    AllocationBasis    @default(PLANNED) @map("allocation_basis")
+  amberThreshold     Decimal            @default(90) @map("amber_threshold") @db.Decimal(5, 2)
+  redThreshold       Decimal            @default(100) @map("red_threshold") @db.Decimal(5, 2)
+  debtPayoffStrategy DebtPayoffStrategy @default(SNOWBALL) @map("debt_payoff_strategy")
+  gstEnabled         Boolean            @default(false) @map("gst_enabled")
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  members              HouseholdMember[]
-  buckets              Bucket[]
-  categories           Category[]
-  accounts             Account[]
-  transactions         Transaction[]
-  transactionSplits    TransactionSplit[]
-  budgets              Budget[]
-  budgetItems          BudgetItem[]
-  recurring            RecurringTransaction[]
-  recurringExceptions  RecurringException[]
-  sinkingFunds         SinkingFund[]
-  goals                FinancialGoal[]
-  debts                Debt[]
-  assets               Asset[]
-  assetValuations      AssetValuation[]
-  netWorthSnapshots    NetWorthSnapshot[]
-  rules                CategorisationRule[]
-  importProfiles       ImportProfile[]
-  importBatches        ImportBatch[]
-  notifications        Notification[]
-  notificationSettings NotificationSetting[]
-  importLinks          ImportLink[]
+  members                  HouseholdMember[]
+  buckets                  Bucket[]
+  categories               Category[]
+  accounts                 Account[]
+  transactions             Transaction[]
+  transactionSplits        TransactionSplit[]
+  budgets                  Budget[]
+  budgetItems              BudgetItem[]
+  recurring                RecurringTransaction[]
+  recurringExceptions      RecurringException[]
+  sinkingFunds             SinkingFund[]
+  goals                    FinancialGoal[]
+  debts                    Debt[]
+  assets                   Asset[]
+  assetValuations          AssetValuation[]
+  netWorthSnapshots        NetWorthSnapshot[]
+  rules                    CategorisationRule[]
+  importProfiles           ImportProfile[]
+  importBatches            ImportBatch[]
+  notifications            Notification[]
+  notificationSettings     NotificationSetting[]
+  importLinks              ImportLink[]
+  sinkingFundContributions SinkingFundContribution[]
 
   @@map("households")
 }
@@ -329,17 +330,17 @@ model Category {
   createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  household   Household    @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  bucket      Bucket?      @relation(fields: [bucketId], references: [id], onDelete: Restrict)
-  parent      Category?    @relation("CategoryGroup", fields: [parentId], references: [id], onDelete: Restrict)
-  children    Category[]   @relation("CategoryGroup")
+  household Household  @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  bucket    Bucket?    @relation(fields: [bucketId], references: [id], onDelete: Restrict)
+  parent    Category?  @relation("CategoryGroup", fields: [parentId], references: [id], onDelete: Restrict)
+  children  Category[] @relation("CategoryGroup")
 
-  splits             TransactionSplit[]
-  budgetItems        BudgetItem[]
-  recurring          RecurringTransaction[]
-  sinkingFunds       SinkingFund[]
-  debts              Debt[]
-  rules              CategorisationRule[]
+  splits       TransactionSplit[]
+  budgetItems  BudgetItem[]
+  recurring    RecurringTransaction[]
+  sinkingFunds SinkingFund[]
+  debts        Debt[]
+  rules        CategorisationRule[]
 
   // Unique (household_id, parent_id, name) with NULLS NOT DISTINCT is created in SQL.
   @@unique([householdId, systemKey])
@@ -374,12 +375,12 @@ model Account {
   createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt           DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  household       Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  bucketTag       Bucket?       @relation(fields: [bucketTagId], references: [id], onDelete: SetNull)
-  offsetFor       Account?      @relation("Offset", fields: [offsetForAccountId], references: [id], onDelete: SetNull)
-  offsets         Account[]     @relation("Offset")
-  transactionsOut Transaction[] @relation("FromAccount")
-  transactionsIn  Transaction[] @relation("ToAccount")
+  household       Household              @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  bucketTag       Bucket?                @relation(fields: [bucketTagId], references: [id], onDelete: SetNull)
+  offsetFor       Account?               @relation("Offset", fields: [offsetForAccountId], references: [id], onDelete: SetNull)
+  offsets         Account[]              @relation("Offset")
+  transactionsOut Transaction[]          @relation("FromAccount")
+  transactionsIn  Transaction[]          @relation("ToAccount")
   recurringOut    RecurringTransaction[] @relation("RecurringFromAccount")
   recurringIn     RecurringTransaction[] @relation("RecurringToAccount")
   sinkingFunds    SinkingFund[]
@@ -388,8 +389,8 @@ model Account {
   importProfiles  ImportProfile[]
   importBatches   ImportBatch[]
   importLinks     ImportLink[]
-  rules           CategorisationRule[] @relation("RuleAccount")
-  ruleTargets     CategorisationRule[] @relation("RuleTargetAccount")
+  rules           CategorisationRule[]   @relation("RuleAccount")
+  ruleTargets     CategorisationRule[]   @relation("RuleTargetAccount")
 
   @@index([householdId, isClosed])
   @@map("accounts")
@@ -420,15 +421,16 @@ model Transaction {
   createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  household   Household             @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  account     Account               @relation("FromAccount", fields: [accountId], references: [id], onDelete: Restrict)
-  toAccount   Account?              @relation("ToAccount", fields: [toAccountId], references: [id], onDelete: Restrict)
-  recurring   RecurringTransaction? @relation(fields: [recurringId], references: [id], onDelete: SetNull)
-  goal        FinancialGoal?        @relation(fields: [goalId], references: [id], onDelete: SetNull)
-  importBatch ImportBatch?          @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
-  createdBy   User?                 @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  splits      TransactionSplit[]
-  bankRows    ImportLink[]
+  household               Household                @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  account                 Account                  @relation("FromAccount", fields: [accountId], references: [id], onDelete: Restrict)
+  toAccount               Account?                 @relation("ToAccount", fields: [toAccountId], references: [id], onDelete: Restrict)
+  recurring               RecurringTransaction?    @relation(fields: [recurringId], references: [id], onDelete: SetNull)
+  goal                    FinancialGoal?           @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  importBatch             ImportBatch?             @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+  createdBy               User?                    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  splits                  TransactionSplit[]
+  bankRows                ImportLink[]
+  sinkingFundContribution SinkingFundContribution?
 
   @@unique([accountId, fingerprint])
   @@unique([recurringId, occurrenceDate])
@@ -484,16 +486,16 @@ model Budget {
 }
 
 model BudgetItem {
-  id               String    @id @default(uuid()) @db.Uuid
-  householdId      String    @map("household_id") @db.Uuid
-  budgetId         String    @map("budget_id") @db.Uuid
-  categoryId       String    @map("category_id") @db.Uuid
-  amountCents      BigInt    @map("amount_cents")
-  enteredFrequency Frequency @map("entered_frequency")
-  frequencyInterval Int?     @map("frequency_interval")
-  notes            String?
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id                String    @id @default(uuid()) @db.Uuid
+  householdId       String    @map("household_id") @db.Uuid
+  budgetId          String    @map("budget_id") @db.Uuid
+  categoryId        String    @map("category_id") @db.Uuid
+  amountCents       BigInt    @map("amount_cents")
+  enteredFrequency  Frequency @map("entered_frequency")
+  frequencyInterval Int?      @map("frequency_interval")
+  notes             String?
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
   budget    Budget    @relation(fields: [budgetId], references: [id], onDelete: Cascade)
@@ -507,28 +509,28 @@ model BudgetItem {
 // ─── Recurring schedules ─────────────────────────────────────────────────────
 
 model RecurringTransaction {
-  id                String        @id @default(uuid()) @db.Uuid
-  householdId       String        @map("household_id") @db.Uuid
-  name              String
-  type              RecurringType
-  amountCents       BigInt        @map("amount_cents")
-  amountKind        AmountKind    @default(FIXED) @map("amount_kind")
-  frequency         Frequency
+  id              String        @id @default(uuid()) @db.Uuid
+  householdId     String        @map("household_id") @db.Uuid
+  name            String
+  type            RecurringType
+  amountCents     BigInt        @map("amount_cents")
+  amountKind      AmountKind    @default(FIXED) @map("amount_kind")
+  frequency       Frequency
   /// N for the EVERY_N_* frequencies.
-  interval          Int?
-  startDate         DateTime      @map("start_date") @db.Date
-  endDate           DateTime?     @map("end_date") @db.Date
-  occurrenceCount   Int?          @map("occurrence_count")
-  weekendRule       WeekendRule   @default(NONE) @map("weekend_rule")
-  autoPost          Boolean       @default(false) @map("auto_post")
-  accountId         String        @map("account_id") @db.Uuid
-  toAccountId       String?       @map("to_account_id") @db.Uuid
-  categoryId        String?       @map("category_id") @db.Uuid
-  payee             String?
-  notes             String?
-  isActive          Boolean       @default(true) @map("is_active")
-  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+  interval        Int?
+  startDate       DateTime      @map("start_date") @db.Date
+  endDate         DateTime?     @map("end_date") @db.Date
+  occurrenceCount Int?          @map("occurrence_count")
+  weekendRule     WeekendRule   @default(NONE) @map("weekend_rule")
+  autoPost        Boolean       @default(false) @map("auto_post")
+  accountId       String        @map("account_id") @db.Uuid
+  toAccountId     String?       @map("to_account_id") @db.Uuid
+  categoryId      String?       @map("category_id") @db.Uuid
+  payee           String?
+  notes           String?
+  isActive        Boolean       @default(true) @map("is_active")
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   household    Household            @relation(fields: [householdId], references: [id], onDelete: Cascade)
   account      Account              @relation("RecurringFromAccount", fields: [accountId], references: [id], onDelete: Restrict)
@@ -573,6 +575,8 @@ model SinkingFund {
   dueDate                DateTime  @map("due_date") @db.Date
   contributionFrequency  Frequency @map("contribution_frequency")
   contributionInterval   Int?      @map("contribution_interval")
+  /// Contribution dates repeat from this date (e.g. a payday).
+  contributionAnchorDate DateTime  @default(dbgenerated("CURRENT_DATE")) @map("contribution_anchor_date") @db.Date
   accountId              String?   @map("account_id") @db.Uuid
   categoryId             String?   @map("category_id") @db.Uuid
   recurringId            String?   @map("recurring_id") @db.Uuid
@@ -582,14 +586,36 @@ model SinkingFund {
   createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  household Household             @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  account   Account?              @relation(fields: [accountId], references: [id], onDelete: SetNull)
-  category  Category?             @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  recurring RecurringTransaction? @relation(fields: [recurringId], references: [id], onDelete: SetNull)
-  payments  TransactionSplit[]
+  household     Household                 @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  account       Account?                  @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  category      Category?                 @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  recurring     RecurringTransaction?     @relation(fields: [recurringId], references: [id], onDelete: SetNull)
+  payments      TransactionSplit[]
+  contributions SinkingFundContribution[]
 
   @@index([householdId, isActive])
   @@map("sinking_funds")
+}
+
+/// Money set aside for a sinking fund. Linked to a transfer when money moved into the fund's account.
+model SinkingFundContribution {
+  id            String   @id @default(uuid()) @db.Uuid
+  householdId   String   @map("household_id") @db.Uuid
+  sinkingFundId String   @map("sinking_fund_id") @db.Uuid
+  date          DateTime @db.Date
+  amountCents   BigInt   @map("amount_cents")
+  transactionId String?  @unique @map("transaction_id") @db.Uuid
+  notes         String?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  household   Household    @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  sinkingFund SinkingFund  @relation(fields: [sinkingFundId], references: [id], onDelete: Cascade)
+  transaction Transaction? @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([householdId, date])
+  @@index([sinkingFundId])
+  @@map("sinking_fund_contributions")
 }
 
 model FinancialGoal {
@@ -619,25 +645,25 @@ model FinancialGoal {
 }
 
 model Debt {
-  id                    String    @id @default(uuid()) @db.Uuid
-  householdId           String    @map("household_id") @db.Uuid
-  accountId             String    @unique @map("account_id") @db.Uuid
-  originalBalanceCents  BigInt    @map("original_balance_cents")
+  id                   String    @id @default(uuid()) @db.Uuid
+  householdId          String    @map("household_id") @db.Uuid
+  accountId            String    @unique @map("account_id") @db.Uuid
+  originalBalanceCents BigInt    @map("original_balance_cents")
   /// Annual percentage, e.g. 6.2500.
-  annualRate            Decimal   @map("annual_rate") @db.Decimal(7, 4)
-  minRepaymentCents     BigInt    @map("min_repayment_cents")
-  repaymentFrequency    Frequency @map("repayment_frequency")
-  repaymentInterval     Int?      @map("repayment_interval")
-  extraRepaymentCents   BigInt    @default(0) @map("extra_repayment_cents")
-  dueDay                Int?      @map("due_day") @db.SmallInt
-  startDate             DateTime? @map("start_date") @db.Date
+  annualRate           Decimal   @map("annual_rate") @db.Decimal(7, 4)
+  minRepaymentCents    BigInt    @map("min_repayment_cents")
+  repaymentFrequency   Frequency @map("repayment_frequency")
+  repaymentInterval    Int?      @map("repayment_interval")
+  extraRepaymentCents  BigInt    @default(0) @map("extra_repayment_cents")
+  dueDay               Int?      @map("due_day") @db.SmallInt
+  startDate            DateTime? @map("start_date") @db.Date
   /// Bills category the minimum part of a repayment is assigned to.
-  categoryId            String?   @map("category_id") @db.Uuid
+  categoryId           String?   @map("category_id") @db.Uuid
   /// HECS/HELP: indexed annually instead of charged interest.
-  indexationOnly        Boolean   @default(false) @map("indexation_only")
-  includeInPayoff       Boolean   @default(true) @map("include_in_payoff")
-  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  indexationOnly       Boolean   @default(false) @map("indexation_only")
+  includeInPayoff      Boolean   @default(true) @map("include_in_payoff")
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
   account   Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
@@ -650,15 +676,15 @@ model Debt {
 // ─── Net worth ───────────────────────────────────────────────────────────────
 
 model Asset {
-  id          String    @id @default(uuid()) @db.Uuid
-  householdId String    @map("household_id") @db.Uuid
-  name        String
-  type        AssetType
-  includeInNetWorth Boolean @default(true) @map("include_in_net_worth")
-  isActive    Boolean   @default(true) @map("is_active")
-  notes       String?
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id                String    @id @default(uuid()) @db.Uuid
+  householdId       String    @map("household_id") @db.Uuid
+  name              String
+  type              AssetType
+  includeInNetWorth Boolean   @default(true) @map("include_in_net_worth")
+  isActive          Boolean   @default(true) @map("is_active")
+  notes             String?
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   household  Household        @relation(fields: [householdId], references: [id], onDelete: Cascade)
   valuations AssetValuation[]
@@ -703,54 +729,54 @@ model NetWorthSnapshot {
 // ─── Import and rules ────────────────────────────────────────────────────────
 
 model CategorisationRule {
-  id               String          @id @default(uuid()) @db.Uuid
-  householdId      String          @map("household_id") @db.Uuid
-  name             String?
-  priority         Int
-  matchField       RuleMatchField  @map("match_field")
-  matchType        RuleMatchType   @map("match_type")
+  id             String           @id @default(uuid()) @db.Uuid
+  householdId    String           @map("household_id") @db.Uuid
+  name           String?
+  priority       Int
+  matchField     RuleMatchField   @map("match_field")
+  matchType      RuleMatchType    @map("match_type")
   /// Plain text, matched case-insensitively. Never a regex.
-  matchValue       String          @map("match_value")
-  minAmountCents   BigInt?         @map("min_amount_cents")
-  maxAmountCents   BigInt?         @map("max_amount_cents")
-  direction        RuleDirection   @default(ANY)
-  accountId        String?         @map("account_id") @db.Uuid
-  setCategoryId    String?         @map("set_category_id") @db.Uuid
-  setType          TransactionType? @map("set_type")
-  setToAccountId   String?         @map("set_to_account_id") @db.Uuid
-  setPayee         String?         @map("set_payee")
-  addNote          String?         @map("add_note")
-  isActive         Boolean         @default(true) @map("is_active")
-  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+  matchValue     String           @map("match_value")
+  minAmountCents BigInt?          @map("min_amount_cents")
+  maxAmountCents BigInt?          @map("max_amount_cents")
+  direction      RuleDirection    @default(ANY)
+  accountId      String?          @map("account_id") @db.Uuid
+  setCategoryId  String?          @map("set_category_id") @db.Uuid
+  setType        TransactionType? @map("set_type")
+  setToAccountId String?          @map("set_to_account_id") @db.Uuid
+  setPayee       String?          @map("set_payee")
+  addNote        String?          @map("add_note")
+  isActive       Boolean          @default(true) @map("is_active")
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  account     Account?  @relation("RuleAccount", fields: [accountId], references: [id], onDelete: Cascade)
-  setCategory Category? @relation(fields: [setCategoryId], references: [id], onDelete: SetNull)
-  setToAccount Account? @relation("RuleTargetAccount", fields: [setToAccountId], references: [id], onDelete: SetNull)
+  household    Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  account      Account?  @relation("RuleAccount", fields: [accountId], references: [id], onDelete: Cascade)
+  setCategory  Category? @relation(fields: [setCategoryId], references: [id], onDelete: SetNull)
+  setToAccount Account?  @relation("RuleTargetAccount", fields: [setToAccountId], references: [id], onDelete: SetNull)
 
   @@index([householdId, isActive])
   @@map("categorisation_rules")
 }
 
 model ImportProfile {
-  id             String         @id @default(uuid()) @db.Uuid
-  householdId    String         @map("household_id") @db.Uuid
-  accountId      String         @map("account_id") @db.Uuid
-  name           String
-  delimiter      String         @default(",")
-  hasHeader      Boolean        @default(true) @map("has_header")
-  dateFormat     String         @default("DD/MM/YYYY") @map("date_format")
-  signConvention SignConvention @default(NEGATIVE_IS_DEBIT) @map("sign_convention")
-  dateColumn        Int         @map("date_column")
-  descriptionColumn Int         @map("description_column")
-  amountColumn      Int?        @map("amount_column")
-  debitColumn       Int?        @map("debit_column")
-  creditColumn      Int?        @map("credit_column")
-  balanceColumn     Int?        @map("balance_column")
-  payeeColumn       Int?        @map("payee_column")
-  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id                String         @id @default(uuid()) @db.Uuid
+  householdId       String         @map("household_id") @db.Uuid
+  accountId         String         @map("account_id") @db.Uuid
+  name              String
+  delimiter         String         @default(",")
+  hasHeader         Boolean        @default(true) @map("has_header")
+  dateFormat        String         @default("DD/MM/YYYY") @map("date_format")
+  signConvention    SignConvention @default(NEGATIVE_IS_DEBIT) @map("sign_convention")
+  dateColumn        Int            @map("date_column")
+  descriptionColumn Int            @map("description_column")
+  amountColumn      Int?           @map("amount_column")
+  debitColumn       Int?           @map("debit_column")
+  creditColumn      Int?           @map("credit_column")
+  balanceColumn     Int?           @map("balance_column")
+  payeeColumn       Int?           @map("payee_column")
+  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
   account   Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)

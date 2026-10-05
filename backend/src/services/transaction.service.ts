@@ -15,7 +15,8 @@ import type { TransactionSort } from '../repositories/transactions.js';
 export interface SplitRequest {
   categoryId: string;
   amountCents: number;
-  isSinkingFundPayment?: boolean;
+  /** Paid from this sinking fund: kept in history, excluded from period variance (spec §9). */
+  sinkingFundId?: string | null;
 }
 
 export interface TransactionInput {
@@ -77,6 +78,7 @@ export function serializeTransaction(t: repo.TransactionWithRelations) {
       amountCents: cents(s.amountCents),
       isExtraRepayment: s.isExtraRepayment,
       isSinkingFundPayment: s.isSinkingFundPayment,
+      sinkingFundId: s.sinkingFundId,
     })),
     buckets: [...buckets.values()],
     uncategorised: repo.CATEGORISED_TYPES.includes(t.type) && t.splits.length === 0,
@@ -290,7 +292,18 @@ export function createTransactionService(deps: Deps) {
         amountCents,
       });
     }
-    return requested.map((s) => ({ categoryId: s.categoryId, amountCents: s.amountCents, isSinkingFundPayment: s.isSinkingFundPayment }));
+    const fundIds = [...new Set(requested.map((s) => s.sinkingFundId).filter((x): x is string => Boolean(x)))];
+    if (fundIds.length) {
+      const funds = await db.sinkingFund.count({ where: { householdId, id: { in: fundIds } } });
+      if (funds !== fundIds.length) throw validationError('Unknown sinking fund', { field: 'splits' });
+      if (kind !== 'EXPENSE') throw validationError('Only spending can be paid from a sinking fund', { field: 'splits' });
+    }
+    return requested.map((s) => ({
+      categoryId: s.categoryId,
+      amountCents: s.amountCents,
+      sinkingFundId: s.sinkingFundId ?? null,
+      isSinkingFundPayment: Boolean(s.sinkingFundId),
+    }));
   }
 
   /**

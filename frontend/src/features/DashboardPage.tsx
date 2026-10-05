@@ -215,6 +215,35 @@ export function DashboardPage() {
                 ))
               )}
             </section>
+            {d.watch.length ? (
+              <section className="card" aria-labelledby="due-h">
+                <div className="card-header">
+                  <h2 id="due-h">Savings to watch</h2>
+                </div>
+                {d.watch.map((w) => (
+                  <Link key={`${w.kind}-${w.id}`} to={w.kind === 'goal' ? '/fire-extinguisher' : '/sinking-funds'} className="list-item" style={{ color: 'inherit', textDecoration: 'none' }}>
+                    <div className="grow">
+                      <div className="truncate">{w.name}</div>
+                      <div className="muted small">
+                        <Money cents={w.currentCents} /> of <Money cents={w.targetCents} />
+                        {w.date ? ` · ${w.kind === 'goal' ? 'target' : 'due'} ${formatDate(w.date, locale)}` : ''}
+                      </div>
+                    </div>
+                    <span className={`badge ${w.status === 'due_short' ? 'danger' : 'warn'}`}>
+                      {w.status === 'due_short' ? (
+                        <>
+                          ! Short by <Money cents={w.shortfallCents} />
+                        </>
+                      ) : w.status === 'due_soon' ? (
+                        '● Due soon'
+                      ) : (
+                        '● Behind'
+                      )}
+                    </span>
+                  </Link>
+                ))}
+              </section>
+            ) : null}
             <NetWorthCard d={d} />
           </div>
         </div>
