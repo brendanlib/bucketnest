@@ -3,6 +3,7 @@ import { formatMoney } from '../lib/format';
 import { useHousehold } from '../lib/household';
 import { useCssColours } from '../lib/chartTheme';
 import { Icon } from './Icon';
+import { TableWrap } from './TableWrap';
 
 export const CHART_VARS = ['series-1', 'series-2', 'series-3', 'series-4', 'series-muted', 'ink', 'grid', 'text-3', 'surface', 'border', 'bucket-1', 'bucket-2', 'bucket-3', 'bucket-4'] as const;
 export const useChartColours = () => useCssColours(CHART_VARS);
@@ -49,7 +50,7 @@ export function ChartCard({ title, subtitle, csvUrl, table, children }: { title:
           </a>
         ) : null}
       </div>
-      {showTable ? <div className="table-wrap">{table}</div> : children}
+      {showTable ? <TableWrap label={title}>{table}</TableWrap> : children}
     </section>
   );
 }

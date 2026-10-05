@@ -14,6 +14,7 @@ import { DateInput } from '../components/DateInput';
 import { Money } from '../components/Money';
 import { CategorySelect } from '../components/Pickers';
 import { Icon } from '../components/Icon';
+import { TableWrap } from '../components/TableWrap';
 import { useToast } from '../components/Toast';
 import { formatDate, formatMoney } from '../lib/format';
 import { useHousehold } from '../lib/household';
@@ -189,7 +190,7 @@ function PlanCard() {
         <ErrorState error={plan.error} />
       ) : (
         <>
-          <div className="table-wrap">
+          <TableWrap label="Payoff order">
             <table className="table">
               <thead>
                 <tr>
@@ -221,7 +222,7 @@ function PlanCard() {
                 })}
               </tbody>
             </table>
-          </div>
+          </TableWrap>
           <p>
             Debt-free <strong>{plan.data.debtFreeDate ? formatDate(plan.data.debtFreeDate, locale, 'long') : 'not within 50 years'}</strong> with{' '}
             <Money cents={plan.data.totalInterestCents} /> interest.{' '}
@@ -354,7 +355,7 @@ export function DebtDetailPage() {
           <div className="card-header" style={{ padding: '1rem 1.25rem 0' }}>
             <h2 id="sched-h">Repayment schedule (with extra)</h2>
           </div>
-          <div className="table-wrap">
+          <TableWrap label="Repayment schedule">
             <table className="table">
               <thead>
                 <tr>
@@ -377,7 +378,7 @@ export function DebtDetailPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableWrap>
           {p.withExtra.schedule.length > 24 ? (
             <div style={{ padding: '0.75rem 1.25rem' }}>
               <button type="button" className="btn small" onClick={() => setShowAll(!showAll)}>

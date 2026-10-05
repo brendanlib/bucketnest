@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { TabList, tabPanelProps } from '../components/Tabs';
 import { useSearchParams } from 'react-router';
 import { Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { qs } from '../api/client';
@@ -15,6 +16,7 @@ import { useHousehold } from '../lib/household';
 import { bucketColour } from '../lib/colours';
 import { resolveColour } from '../lib/chartTheme';
 import { monthLabel, presetRange, PRESET_LABELS, trimLeading, type Preset } from '../lib/presets';
+import { TableWrap } from '../components/TableWrap';
 
 const TABS = [
   { key: 'spending', label: 'Spending' },
@@ -41,50 +43,46 @@ export function ReportsPage() {
       <PageTip id="reports" title="Reading the reports">
         Spending is net of refunds and includes bills paid from sinking funds. Money moved into the Fire Extinguisher bucket is shown as saving, not spending. Every chart has a table view and a CSV download.
       </PageTip>
-      <div className="segmented" role="tablist" aria-label="Report" style={{ marginBottom: '1rem' }}>
-        {TABS.map((t) => (
-          <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} aria-pressed={tab === t.key} onClick={() => setParams({ tab: t.key }, { replace: true })}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-      {tab === 'spending' || tab === 'income' ? (
-        <div className="report-filters">
-          <div className="field">
-            <label htmlFor="preset" className="field-label">
-              Dates
-            </label>
-            <select id="preset" className="input" value={preset} onChange={(e) => setPreset(e.target.value as Preset)}>
-              {(Object.keys(PRESET_LABELS) as Preset[]).map((p) => (
-                <option key={p} value={p}>
-                  {PRESET_LABELS[p]}
-                </option>
-              ))}
-            </select>
+      <TabList label="Report" id="report" tabs={TABS} value={tab} onChange={(key) => setParams({ tab: key }, { replace: true })} />
+      <div className="stack" {...tabPanelProps('report', tab)}>
+        {tab === 'spending' || tab === 'income' ? (
+          <div className="report-filters">
+            <div className="field">
+              <label htmlFor="preset" className="field-label">
+                Dates
+              </label>
+              <select id="preset" className="input" value={preset} onChange={(e) => setPreset(e.target.value as Preset)}>
+                {(Object.keys(PRESET_LABELS) as Preset[]).map((p) => (
+                  <option key={p} value={p}>
+                    {PRESET_LABELS[p]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {preset === 'custom' ? (
+              <>
+                <div className="field">
+                  <span className="field-label">From</span>
+                  <DateInput aria-label="From" value={custom.from} onChange={(d) => setCustom({ ...custom, from: d })} />
+                </div>
+                <div className="field">
+                  <span className="field-label">To</span>
+                  <DateInput aria-label="To" value={custom.to} onChange={(d) => setCustom({ ...custom, to: d })} />
+                </div>
+              </>
+            ) : (
+              <p className="muted small" style={{ paddingBottom: '0.6rem' }}>
+                {formatPeriod(range.from, range.to, 'en-AU')}
+              </p>
+            )}
           </div>
-          {preset === 'custom' ? (
-            <>
-              <div className="field">
-                <span className="field-label">From</span>
-                <DateInput aria-label="From" value={custom.from} onChange={(d) => setCustom({ ...custom, from: d })} />
-              </div>
-              <div className="field">
-                <span className="field-label">To</span>
-                <DateInput aria-label="To" value={custom.to} onChange={(d) => setCustom({ ...custom, to: d })} />
-              </div>
-            </>
-          ) : (
-            <p className="muted small" style={{ paddingBottom: '0.6rem' }}>
-              {formatPeriod(range.from, range.to, 'en-AU')}
-            </p>
-          )}
-        </div>
-      ) : null}
-      {tab === 'spending' ? <SpendingReport range={range} /> : null}
-      {tab === 'income' ? <IncomeReport range={range} /> : null}
-      {tab === 'budget' ? <BudgetReport /> : null}
-      {tab === 'debt' ? <DebtReport /> : null}
-      {tab === 'forecast' ? <ForecastReportView /> : null}
+        ) : null}
+        {tab === 'spending' ? <SpendingReport range={range} /> : null}
+        {tab === 'income' ? <IncomeReport range={range} /> : null}
+        {tab === 'budget' ? <BudgetReport /> : null}
+        {tab === 'debt' ? <DebtReport /> : null}
+        {tab === 'forecast' ? <ForecastReportView /> : null}
+      </div>
     </>
   );
 }
@@ -455,7 +453,7 @@ function ForecastReportView() {
 
       <section className="card" style={{ padding: 0 }} aria-labelledby="fc-cat">
         <div className="card-header" style={{ padding: '1rem 1.25rem 0' }}><h2 id="fc-cat">By category</h2></div>
-        <div className="table-wrap">
+        <TableWrap label="Forecast by category">
           <table className="table">
             <thead><tr><th>Category</th>{r.months.map((m) => <th key={m} className="right">{monthLabel(m, locale)}</th>)}</tr></thead>
             <tbody>
@@ -467,12 +465,12 @@ function ForecastReportView() {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableWrap>
       </section>
 
       <section className="card" style={{ padding: 0 }} aria-labelledby="fc-acct">
         <div className="card-header" style={{ padding: '1rem 1.25rem 0' }}><h2 id="fc-acct">Projected month-end balances</h2></div>
-        <div className="table-wrap">
+        <TableWrap label="Projected month-end balances">
           <table className="table">
             <thead><tr><th>Account</th><th className="right">Now</th>{r.months.map((m) => <th key={m} className="right">{monthLabel(m, locale)}</th>)}</tr></thead>
             <tbody>
@@ -485,7 +483,7 @@ function ForecastReportView() {
               ))}
             </tbody>
           </table>
-        </div>
+        </TableWrap>
       </section>
     </div>
   );

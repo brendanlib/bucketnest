@@ -14,6 +14,7 @@ import { Field } from '../components/Field';
 import { useToast } from '../components/Toast';
 import { formatDate, formatDateTime } from '../lib/format';
 import { useHousehold } from '../lib/household';
+import { TableWrap } from '../components/TableWrap';
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const PAGE = 50;
@@ -359,7 +360,7 @@ function MapStep({
           <h2>Preview</h2>
           <span className="muted small">first {preview.length} of {result.summary.total} rows</span>
         </div>
-        <div className="table-wrap">
+        <TableWrap label="Import preview">
           <table className="table">
             <thead>
               <tr>
@@ -380,7 +381,7 @@ function MapStep({
               ))}
             </tbody>
           </table>
-        </div>
+        </TableWrap>
       </div>
       <div className="form-actions">
         <button type="button" className="btn" onClick={onBack}>
@@ -550,7 +551,7 @@ function ReviewStep({
       <FormError error={error} />
 
       <div className="card" style={{ padding: 0 }}>
-        <div className="table-wrap">
+        <TableWrap label="Rows to import">
           <table className="table import-table">
             <thead>
               <tr>
@@ -656,7 +657,7 @@ function ReviewStep({
               })}
             </tbody>
           </table>
-        </div>
+        </TableWrap>
       </div>
       {pages > 1 ? (
         <nav className="row" style={{ justifyContent: 'center' }} aria-label="Pages">

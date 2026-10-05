@@ -85,6 +85,8 @@ export const notificationRoutes =
     app.delete(
       '/household',
       {
+        // It checks a password, so it gets the same tight limit as login.
+        config: { rateLimit: { max: config.rateLimits.auth, timeWindow: '1 minute' } },
         schema: {
           tags: ['data'],
           description: 'Permanently deletes the household and all its data. Owner only; type the household name and your password.',

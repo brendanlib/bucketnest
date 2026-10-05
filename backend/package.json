@@ -17,7 +17,9 @@
     "prisma:generate": "prisma generate",
     "migrate": "prisma migrate deploy",
     "reset-password": "node dist/cli/reset-password.js",
-    "prisma:migrate:dev": "prisma migrate deploy"
+    "prisma:migrate:dev": "prisma migrate deploy",
+    "seed:demo": "node dist/cli/seed-demo.js",
+    "perf-check": "node dist/cli/perf-check.js"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.2",
@@ -30,14 +32,13 @@
     "decimal.js": "^10.6.0",
     "fastify": "^5.12.5",
     "fastify-type-provider-zod": "^6.1.0",
-    "nodemailer": "^7.0.13",
+    "nodemailer": "^10.0.15",
     "prisma": "6.19.3",
     "zod": "^4.6.5"
   },
   "devDependencies": {
     "@testcontainers/postgresql": "^11.14.0",
     "@types/node": "^24.19.1",
-    "@types/nodemailer": "^8.0.2",
     "@vitest/coverage-v8": "3.2",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
@@ -52,5 +53,8 @@
     "cpu-features": false,
     "ssh2": false,
     "protobufjs": false
+  },
+  "overrides": {
+    "deepmerge-ts": "^8.0.2"
   }
 }

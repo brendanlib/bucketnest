@@ -45,6 +45,7 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-}
       SEED_DEMO: ${SEED_DEMO:-false}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     networks: [db, web]
 
@@ -55,7 +56,9 @@ services:
       backend:
         condition: service_healthy
     ports:
-      - "${APP_PORT:-8080}:8080"
+      # APP_BIND=127.0.0.1 keeps the port off the network when a reverse proxy
+      # runs on this host. (Docker-published ports bypass ufw.)
+      - "${APP_BIND:-0.0.0.0}:${APP_PORT:-8080}:8080"
     networks: [web]
     # Traefik instead of a published port: remove `ports` above, join Traefik's
     # network, and add labels like these.

@@ -11,6 +11,7 @@ import { useHousehold } from '../lib/household';
 import { RecurringForm } from './RecurringForm';
 import { OccurrenceActions, OccurrenceStatusBadge } from './OccurrenceActions';
 import { describeFrequency } from './RecurringPage';
+import { TableWrap } from '../components/TableWrap';
 
 /** Bills-bucket schedules: next due, amount, and what's paid this budget period (spec §9). */
 export function BillsPage() {
@@ -77,7 +78,7 @@ export function BillsPage() {
             Add rent or mortgage, utilities, insurance and subscriptions so they show up before they’re due.
           </EmptyState>
         ) : (
-          <div className="table-wrap">
+          <TableWrap label="Bills">
             <table className="table">
               <thead>
                 <tr>
@@ -142,7 +143,7 @@ export function BillsPage() {
                 })}
               </tbody>
             </table>
-          </div>
+          </TableWrap>
         )}
       </div>
       {editing ? <RecurringForm schedule={editing === 'new' ? undefined : editing} defaultType="EXPENSE" onClose={() => setEditing(null)} /> : null}

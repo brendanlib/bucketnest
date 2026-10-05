@@ -239,6 +239,18 @@ describe('password reset', () => {
     expect((await c.post('/api/auth/reset-password', { token: token2, password: 'too late passphrase' })).status).toBe(400);
   });
 
+  it('cancels every other reset link once one is used', async () => {
+    const mailer = new FakeMailer();
+    app = await createTestApp({ mailer });
+    const { email } = await registerUser(app);
+    const c = new Client(app);
+    await c.post('/api/auth/forgot-password', { email });
+    await c.post('/api/auth/forgot-password', { email });
+    const [first, second] = mailer.sent.map((m) => decodeURIComponent(/token=([^\s]+)/.exec(m.text)![1]!));
+    expect((await c.post('/api/auth/reset-password', { token: second, password: 'my brand new passphrase' })).status).toBe(204);
+    expect((await c.post('/api/auth/reset-password', { token: first, password: 'an older link passphrase' })).body.error.code).toBe('INVALID_TOKEN');
+  });
+
   it('ends existing sessions on reset', async () => {
     const mailer = new FakeMailer();
     app = await createTestApp({ mailer });
@@ -350,6 +362,16 @@ describe('request protection', () => {
     expect(res.headers['content-security-policy']).toContain("frame-ancestors 'none'");
     expect(res.headers['referrer-policy']).toBe('strict-origin-when-cross-origin');
     expect(res.headers['access-control-allow-origin']).toBeUndefined();
+    expect(res.headers['cache-control']).toBe('no-store'); // financial data never sits in a cache
+  });
+
+  it('limits password guesses when deleting a household', async () => {
+    app = await createTestApp({ rateLimits: { auth: 5 } });
+    const { client } = await registerUser(app);
+    const statuses = [];
+    for (let i = 0; i < 6; i++) statuses.push((await client.request('DELETE', '/api/household', { confirmName: 'x', password: 'wrong guess' })).status);
+    expect(statuses.slice(0, 5).every((s) => s === 400 || s === 401)).toBe(true);
+    expect(statuses[5]).toBe(429);
   });
 
   it('reports health and readiness', async () => {

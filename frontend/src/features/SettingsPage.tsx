@@ -5,6 +5,7 @@ import { api } from '../api/client';
 import { keys, useApiMutation, useBuckets, useNotificationSettings, useSessions, useSettings } from '../api/hooks';
 import type { NotificationSetting } from '../api/types';
 import { ConfirmDialog } from '../components/Modal';
+import { TabList, tabPanelProps } from '../components/Tabs';
 import type { Settings } from '../api/types';
 import { PageHeader } from '../components/PageHeader';
 import { ErrorState, FormError, Loading, errorMessage } from '../components/States';
@@ -41,14 +42,8 @@ export function SettingsPage() {
   return (
     <>
       <PageHeader title="Settings" />
-      <div className="segmented" role="tablist" aria-label="Settings sections" style={{ marginBottom: '1rem' }}>
-        {SECTIONS.map((s) => (
-          <button key={s} type="button" role="tab" aria-selected={section === s} aria-pressed={section === s} onClick={() => setSection(s)}>
-            {s}
-          </button>
-        ))}
-      </div>
-      <div className="stack" role="tabpanel">
+      <TabList label="Settings sections" id="settings" tabs={SECTIONS.map((s) => ({ key: s, label: s }))} value={section} onChange={setSection} />
+      <div className="stack" {...tabPanelProps('settings', section)}>
         {section === 'Budget' ? <BudgetSettings settings={settings.data} /> : null}
         {section === 'Localisation' ? <LocalisationSettings settings={settings.data} /> : null}
         {section === 'Household' ? <HouseholdSettings settings={settings.data} /> : null}

@@ -16,6 +16,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 24, cache: npm, cache-dependency-path: backend/package-lock.json }
       - run: npm ci
+      - run: npm audit --omit=dev --audit-level=high
       - run: npx prisma generate
       - run: npm run typecheck
       - run: npm run test:coverage
@@ -32,13 +33,41 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 24, cache: npm, cache-dependency-path: frontend/package-lock.json }
       - run: npm ci
+      - run: npm audit --omit=dev --audit-level=high
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
 
-  images:
+  # The real Compose stack, as deployed: builds both images, seeds the demo
+  # household on first start, then runs the smoke test and the accessibility scan.
+  stack:
     runs-on: ubuntu-latest
+    env: { DEMO_PASSWORD: ci-demo-household-2026 }
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -t home-budget-backend ./backend
-      - run: docker build -t home-budget-frontend ./frontend
+      - name: Configure .env
+        run: |
+          cp .env.example .env
+          sed -i "s|^SESSION_SECRET=.*|SESSION_SECRET=$(openssl rand -hex 32)|" .env
+          sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(openssl rand -hex 24)|" .env
+          sed -i "s|^PUBLIC_URL=.*|PUBLIC_URL=http://localhost:8080|" .env
+          sed -i "s|^COOKIE_SECURE=.*|COOKIE_SECURE=false|" .env
+          sed -i "s|^TRUST_PROXY=.*|TRUST_PROXY=|" .env
+          sed -i "s|^ALLOW_REGISTRATION=.*|ALLOW_REGISTRATION=true|" .env
+          sed -i "s|^SEED_DEMO=.*|SEED_DEMO=true|" .env
+          sed -i "s|^DEMO_PASSWORD=.*|DEMO_PASSWORD=$DEMO_PASSWORD|" .env
+      - run: docker compose up -d --build --wait --wait-timeout 300
+      - run: curl -fsS http://localhost:8080/api/health/ready
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm, cache-dependency-path: e2e/package-lock.json }
+      - working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          E2E_BASE_URL=http://localhost:8080 E2E_DEMO_PASSWORD=$DEMO_PASSWORD npx playwright test
+      - name: Backup script
+        run: |
+          ./scripts/backup.sh
+          test -s backups/budget-*.dump
+      - if: failure()
+        run: docker compose logs --no-color

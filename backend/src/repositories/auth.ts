@@ -48,6 +48,8 @@ export const findResetToken = (db: DbTx, tokenHash: string) => db.passwordResetT
 export const consumeResetToken = (db: DbTx, id: string, now: Date) =>
   db.passwordResetToken.updateMany({ where: { id, usedAt: null, expiresAt: { gt: now } }, data: { usedAt: now } });
 
+export const deleteUserResetTokens = (db: DbTx, userId: string) => db.passwordResetToken.deleteMany({ where: { userId } });
+
 export const deleteExpiredResetTokens = (db: DbTx, now: Date) =>
   db.passwordResetToken.deleteMany({ where: { OR: [{ expiresAt: { lte: now } }, { usedAt: { not: null } }] } });
 

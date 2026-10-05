@@ -51,7 +51,14 @@ async function request<T>(method: Method, path: string, body?: unknown, retry = 
 
   if (res.status === 204) return undefined as T;
   const text = await res.text();
-  const data = text ? (JSON.parse(text) as unknown) : undefined;
+  let data: unknown;
+  try {
+    data = text ? (JSON.parse(text) as unknown) : undefined;
+  } catch {
+    // Not JSON: an error page from a proxy, e.g. 413 too large or 502 while the server restarts.
+    if (res.ok) throw new ApiError(res.status, 'BAD_RESPONSE', 'The server sent an unexpected response');
+    data = undefined;
+  }
   if (res.ok) return data as T;
 
   const err = (data as { error?: { code: string; message: string; details?: unknown } } | undefined)?.error;
@@ -60,7 +67,7 @@ async function request<T>(method: Method, path: string, body?: unknown, retry = 
     return request<T>(method, path, body, false);
   }
   if (res.status === 401 && !path.startsWith('/auth/login')) onUnauthenticated?.();
-  throw new ApiError(res.status, err?.code ?? 'HTTP_ERROR', err?.message ?? `Request failed (${res.status})`, err?.details);
+  throw new ApiError(res.status, err?.code ?? 'HTTP_ERROR', err?.message ?? fallbackMessage(res.status), err?.details);
 }
 
 export const api = {
@@ -78,4 +85,10 @@ export function qs(params: Record<string, string | number | boolean | undefined 
   }
   const s = search.toString();
   return s ? `?${s}` : '';
+}
+
+function fallbackMessage(status: number): string {
+  if (status === 413) return 'That is too large to upload';
+  if (status === 502 || status === 503 || status === 504) return 'The server is not responding. It may be restarting — try again in a minute.';
+  return `Request failed (${status})`;
 }

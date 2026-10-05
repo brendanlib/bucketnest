@@ -50,7 +50,8 @@ export function createAuthService(deps: Deps) {
   return {
     registrationOpen,
 
-    async register(input: { email: string; name: string; password: string; timezone?: string; userAgent: string | null }) {
+    /** `ignoreRegistrationSwitch` is for the demo seed only; the route never passes it. */
+    async register(input: { email: string; name: string; password: string; timezone?: string; userAgent: string | null }, opts: { ignoreRegistrationSwitch?: boolean } = {}) {
       const email = input.email.trim().toLowerCase();
       requireAcceptablePassword(input.password, { email, name: input.name });
       const passwordHash = await hashPassword(input.password);
@@ -59,7 +60,7 @@ export function createAuthService(deps: Deps) {
       const user = await db.$transaction(async (tx) => {
         // Serialise registrations so "open until the first user" cannot be raced.
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('home-budget:registration'))`;
-        const open = config.allowRegistration ?? (await repo.countUsers(tx)) === 0;
+        const open = opts.ignoreRegistrationSwitch || (config.allowRegistration ?? (await repo.countUsers(tx)) === 0);
         if (!open) throw forbidden('REGISTRATION_CLOSED', 'Registration is closed on this server');
         if (await repo.findUserByEmail(tx, email)) {
           throw conflict('EMAIL_TAKEN', 'An account with this email already exists');
@@ -122,6 +123,7 @@ export function createAuthService(deps: Deps) {
       if (input.currentPassword === input.newPassword) throw badRequest('Choose a password you have not used here before');
       requireAcceptablePassword(input.newPassword, { email: user.email, name: user.name });
       await repo.updatePasswordHash(db, user.id, await hashPassword(input.newPassword));
+      await repo.deleteUserResetTokens(db, user.id);
       // End every session, then issue a fresh one: rotation plus "log out everywhere else".
       await repo.deleteUserSessions(db, user.id);
       log.info({ userId: user.id }, 'password changed');
@@ -154,6 +156,7 @@ export function createAuthService(deps: Deps) {
       }
       const user = await repo.findUserByEmail(db, email);
       if (!user) return;
+      // Sending happens after the response, so its time doesn't reveal which emails have accounts.
       const token = randomToken(32);
       await repo.createResetToken(db, {
         tokenHash: resetHash(token),
@@ -161,16 +164,16 @@ export function createAuthService(deps: Deps) {
         expiresAt: new Date(deps.now().getTime() + RESET_TOKEN_TTL_MS),
       });
       const link = `${config.publicUrl}/reset-password?token=${encodeURIComponent(token)}`;
-      try {
-        await deps.mailer.send({
+      void deps.mailer
+        .send({
           to: user.email,
           subject: 'Reset your Home Budget password',
           text: `Hi ${user.name},\n\nUse this link within 30 minutes to choose a new password:\n\n${link}\n\nIf you did not ask for this, ignore this email.`,
-        });
-        log.info({ userId: user.id }, 'password reset email sent');
-      } catch (err) {
-        log.error({ err: (err as Error).message }, 'password reset email failed');
-      }
+        })
+        .then(
+          () => log.info({ userId: user.id }, 'password reset email sent'),
+          (err: unknown) => log.error({ err: (err as Error).message }, 'password reset email failed'),
+        );
     },
 
     async resetPassword(token: string, newPassword: string) {
@@ -185,6 +188,7 @@ export function createAuthService(deps: Deps) {
       await db.$transaction(async (tx) => {
         const consumed = await repo.consumeResetToken(tx, record.id, now);
         if (consumed.count !== 1) throw invalid;
+        await repo.deleteUserResetTokens(tx, user.id); // any other links sent earlier stop working
         await repo.updatePasswordHash(tx, user.id, passwordHash);
         await repo.deleteUserSessions(tx, user.id);
       });
@@ -197,6 +201,7 @@ export function createAuthService(deps: Deps) {
       if (!user) throw notFound('User');
       await repo.updatePasswordHash(db, user.id, await hashPassword(newPassword));
       await repo.deleteUserSessions(db, user.id);
+      await repo.deleteUserResetTokens(db, user.id);
       log.info({ userId: user.id }, 'password reset from CLI');
       return user;
     },

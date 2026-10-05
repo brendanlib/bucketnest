@@ -4,6 +4,7 @@ import { Link } from 'react-router';
 import type { BudgetItem, BudgetLine, BudgetSummary, Variance } from '../api/types';
 import { Money } from '../components/Money';
 import { ProgressBar } from '../components/Progress';
+import { TableWrap } from '../components/TableWrap';
 
 function Cells({ v, label }: { v: Variance; label: string }) {
   return (
@@ -44,7 +45,7 @@ export function BudgetTable({
 
   return (
     <>
-      <div className="table-wrap">
+      <TableWrap label="Budget">
         <table className="table budget-table">
           <thead>
             <tr>
@@ -133,7 +134,7 @@ export function BudgetTable({
             ) : null}
           </tbody>
         </table>
-      </div>
+      </TableWrap>
 
       <div className="budget-lines-mobile">
         {buckets.map((b) => (

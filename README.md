@@ -2,7 +2,7 @@
 
 A self-hosted household budget app built on the Barefoot Investor bucket method: Bills, Smile, Splurge and Fire Extinguisher. It runs on your own server with `docker compose up -d` and keeps everything in PostgreSQL.
 
-> **Build status: Phase 5 of 6.** The final hardening pass (security review, accessibility, performance, demo data) remains. See [Roadmap](#roadmap).
+> **Build status: all six phases complete.** See [Roadmap](#roadmap). One gap for households of two or more: inviting a second person into a household isn't built yet (each login has its own household).
 
 ## What works now
 
@@ -84,6 +84,9 @@ A self-hosted household budget app built on the Barefoot Investor bucket method:
   - Settings → Data downloads everything as one JSON file, or any list (transactions, accounts, categories, budgets, schedules, funds, goals, debts, valuations, rules) as CSV. Transactions export one row per category split. Exports never include passwords or sessions.
   - The household owner can delete the household and everything in it after typing its name and their password. Members with no other household lose their login.
 - **Settings:** budget period, display frequency, thresholds, currency, locale, time zone, financial year, theme (light, dark or system).
+- **Demo data:** `SEED_DEMO=true` on first start (or `npm run seed:demo`) creates `demo@example.com` with a year of realistic transactions, pay, bills, sinking funds, goals, debts, assets and rules.
+- **Accessibility:** every page passes an automated WCAG 2.2 AA scan (axe) in light and dark themes. It is keyboard-operable (tabs use arrow keys), every chart has a table view, and colour is never the only signal.
+- **Performance:** checked with 50,000 transactions in one household. Every page's API call returns in under 100 ms, and a full export takes under a second. Run it yourself with `npm run perf-check`.
 
 ## Quick start (Ubuntu server)
 
@@ -92,16 +95,16 @@ You need Docker Engine with the Compose plugin.
 ```bash
 git clone <repository> /opt/home-budget
 cd /opt/home-budget
-cp .env.example .env
-openssl rand -hex 32   # paste into SESSION_SECRET
-openssl rand -hex 24   # paste into POSTGRES_PASSWORD
+cp .env.example .env && chmod 600 .env
+sed -i "s|^SESSION_SECRET=.*|SESSION_SECRET=$(openssl rand -hex 32)|" .env
+sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(openssl rand -hex 24)|" .env
 nano .env              # set PUBLIC_URL to the address you'll use
-docker compose up -d
+docker compose up -d --build
 ```
 
-Point your reverse proxy at port 8080 and open your `PUBLIC_URL`. The first person to register becomes the household owner, and registration then closes.
+Put HTTPS in front of port 8080 and open your `PUBLIC_URL`. The first person to register becomes the household owner, and registration then closes.
 
-See [docs/deployment.md](docs/deployment.md) for reverse proxy setup (Nginx Proxy Manager, Traefik, Cloudflare Tunnel) and plain-HTTP LAN testing.
+**[docs/deployment.md](docs/deployment.md) is the full step-by-step guide** for a fresh Ubuntu VM: firewall, Docker, Caddy with automatic HTTPS, backups, email and updates. It also covers Cloudflare Tunnel, Nginx Proxy Manager, Traefik and LAN-only setups.
 
 ## Everyday commands
 
@@ -174,8 +177,14 @@ TZ=Australia/Melbourne npm run test:finance   # finance tests under another time
 npm run test:coverage    # finance module must stay at 100% line coverage, backend ≥ 70%
 
 cd frontend && npm test  # component tests
+
 cd e2e && npx playwright test   # smoke test against the Compose stack on :8080 (ALLOW_REGISTRATION=true)
+E2E_DEMO_PASSWORD=<demo password> npx playwright test a11y   # accessibility scan of every page, using the demo household
+
+cd backend && npm run build && DATABASE_URL=<throwaway database> npm run perf-check   # 50,000-transaction timings
 ```
+
+CI runs all of this, including the real Compose stack with the smoke test and accessibility scan, on every push.
 
 ## Project layout
 
@@ -184,7 +193,7 @@ backend/   Fastify API, Prisma schema and migrations, finance module (src/financ
 frontend/  React + Vite UI, served by nginx, which also proxies /api
 e2e/       Playwright smoke tests
 scripts/   backup.sh, restore.sh
-docs/      deployment, backup and restore, data model
+docs/      deployment (Ubuntu), backup and restore, data model, security review
 ```
 
 ## Roadmap
@@ -194,6 +203,8 @@ docs/      deployment, backup and restore, data model
 3. **Fire Extinguisher** ✅ sinking funds, goals, debts with payoff simulation, offsets, extra repayments, payoff order, investments.
 4. **Insight** ✅ reports, forecast, net worth with valuations and snapshots, calendar.
 5. **Automation** ✅ CSV import and categorisation rules, notifications (in-app and email), data export (JSON and CSV), household deletion.
-6. **Hardening and docs:** OWASP review, accessibility pass, 50,000-transaction performance check, demo data.
+6. **Hardening and docs** ✅ OWASP Top 10 review with fixes ([docs/security.md](docs/security.md)), accessibility pass, 50,000-transaction performance check, demo data, Ubuntu deployment guide, CI against the real stack.
+
+Next: household invites, so two people can share one household with separate logins.
 
 Out of scope for v1: bank feeds, multi-currency, public holiday calendars, native apps, live investment prices, and hosting under a subpath.

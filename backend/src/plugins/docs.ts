@@ -24,6 +24,8 @@ export async function registerDocs(app: FastifyInstance) {
   await app.register(swaggerUi, {
     routePrefix: '/api/docs',
     staticCSP: true,
+    // Swagger UI sets a few inline styles; scripts stay 'self' only.
+    transformStaticCSP: (header) => header.replace("style-src 'self' https:", "style-src 'self' 'unsafe-inline'"),
     uiHooks: { onRequest: requireAuth },
   });
 }

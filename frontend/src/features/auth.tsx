@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '../api/client';
@@ -186,7 +186,12 @@ export function ForgotPasswordPage() {
 
 export function ResetPasswordPage() {
   const [params] = useSearchParams();
-  const token = params.get('token') ?? '';
+  const navigate = useNavigate();
+  // Read once, then drop the token from the address bar so it isn't kept in history or sent as a Referer.
+  const [token] = useState(() => params.get('token') ?? '');
+  useEffect(() => {
+    if (params.has('token')) navigate('/reset-password', { replace: true });
+  }, [params, navigate]);
   const [password, setPassword] = useState('');
   const [done, setDone] = useState(false);
   const [error, setError] = useState<unknown>(null);

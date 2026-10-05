@@ -49,7 +49,7 @@ export async function buildApp(opts: BuildOptions): Promise<FastifyInstance> {
     logger: {
       level: config.logLevel,
       redact: {
-        paths: ['req.headers.cookie', 'req.headers.authorization', 'req.headers["x-csrf-token"]', 'res.headers["set-cookie"]'],
+        paths: ['req.headers.cookie', 'req.headers.authorization', 'req.headers["x-csrf-token"]', 'req.headers["x-internal-key"]', 'res.headers["set-cookie"]'],
         censor: '[redacted]',
       },
     },

@@ -20,6 +20,7 @@ import { strings } from '../locales/en-AU';
 import { TransactionForm } from './TransactionForm';
 import { RuleForm, type RuleDraft } from './RuleForm';
 import { Link } from 'react-router';
+import { TableWrap } from '../components/TableWrap';
 
 /** A merchant-ish prefix of a bank description: "WOOLWORTHS 1234 SYDNEY" → "WOOLWORTHS". */
 export function ruleTextFor(description: string): string {
@@ -345,7 +346,7 @@ export function TransactionsPage() {
           </EmptyState>
         ) : (
           <div className="responsive-table">
-            <div className="table-wrap">
+            <TableWrap label="Transactions">
               <table className="table">
                 <thead>
                   <tr>
@@ -425,7 +426,7 @@ export function TransactionsPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </TableWrap>
             <div className="card-list" style={{ padding: '0 1rem' }}>
               {items.map((t) => (
                 <TransactionRowCompact key={t.id} t={t} perspectiveAccountId={query.accountId} onClick={() => setEditing(t)} />

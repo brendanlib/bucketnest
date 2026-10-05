@@ -83,8 +83,9 @@ export function CalendarPage() {
       ) : (
         <>
           <div className="card cal-card" style={{ padding: 0 }}>
-            <div className="cal-grid" role="grid" aria-label={monthName}>
-              {WEEKDAYS.map((d) => <div key={d} className="cal-head" role="columnheader">{d}</div>)}
+            <div className="cal-grid" role="group" aria-label={monthName}>
+              {/* Each day's button names its full date, so the weekday row is visual only. */}
+              {WEEKDAYS.map((d) => <div key={d} className="cal-head" aria-hidden="true">{d}</div>)}
               {days.map((d) => {
                 const items = byDay.get(d) ?? [];
                 const other = d.slice(0, 7) !== cursor;
@@ -92,7 +93,6 @@ export function CalendarPage() {
                   <button
                     key={d}
                     type="button"
-                    role="gridcell"
                     className={`cal-day${other ? ' other' : ''}${d === today ? ' today' : ''}`}
                     aria-label={`${formatDate(d, locale, 'long')}${items.length ? `, ${items.length} item${items.length === 1 ? '' : 's'}` : ''}`}
                     onClick={() => setDay(d)}

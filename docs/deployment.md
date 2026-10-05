@@ -1,86 +1,172 @@
-# Deploying on Ubuntu
+# Deploying on an Ubuntu server
 
-The app is three containers. Only `frontend` is reachable from outside.
+This guide takes a fresh Ubuntu 24.04 LTS virtual machine to a running Home Budget at `https://budget.example.com`, with automatic HTTPS, a firewall and nightly backups. Allow about 30 minutes.
+
+The app runs as three containers. Only `frontend` is published, and Caddy on the host puts HTTPS in front of it:
 
 ```
-Reverse proxy (TLS) ──▶ frontend (nginx :8080) ── /api ──▶ backend (:3000) ──▶ postgres
-                          published port            internal only          internal only
+Browser ──HTTPS──▶ Caddy (host, :443) ──▶ frontend (nginx, 127.0.0.1:8080) ── /api ──▶ backend ──▶ postgres
+                   certificates, HSTS       web app + proxy                        internal only   internal only
 ```
 
-nginx serves the web app and forwards `/api` to the backend, so the browser talks to a single origin. No API URL is baked into the build, and no CORS is needed.
+Not on a public server? See [Other ways in](#other-ways-in) for a home server behind a router (Cloudflare Tunnel) or a LAN-only install.
 
-## 1. Install Docker
+## What you need
 
-Follow Docker's official instructions for Ubuntu (docker-ce plus the compose plugin), then check:
+- **A VM:** Ubuntu 24.04 LTS (22.04 also works), 2 vCPU, **2 GB RAM** and 20 GB of disk. The images are built on the server, and the build needs about 1.5 GB of memory. With 1 GB of RAM, add swap first (step 2).
+- **A domain name** with a DNS **A record** for `budget.example.com` pointing at the VM's public IP address. Create it now, because Caddy needs it to get a certificate.
+- **SSH access** to the VM as a user with `sudo`.
+
+## 1. Prepare the server
 
 ```bash
+sudo apt update && sudo apt full-upgrade -y
+sudo apt install -y unattended-upgrades git
+sudo dpkg-reconfigure -plow unattended-upgrades   # answer Yes: security updates install themselves
+sudo timedatectl set-timezone Australia/Sydney    # your time zone; cron uses it
+```
+
+The firewall allows only SSH and web traffic:
+
+```bash
+sudo ufw allow OpenSSH
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw enable
+```
+
+> Ports published by Docker bypass ufw. This guide keeps the app's port on `127.0.0.1` (step 5), so Caddy is the only way in.
+
+## 2. Add swap (1 GB VMs only)
+
+```bash
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
+sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
+
+## 3. Install Docker
+
+These are Docker's official instructions for Ubuntu:
+
+```bash
+sudo apt install -y ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" \
+  | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo usermod -aG docker "$USER"
+```
+
+Log out and back in, so the group change applies, then check:
+
+```bash
+docker run --rm hello-world
 docker compose version
 ```
 
-## 2. Configure
+## 4. Get the code onto the server
+
+Push the project to a **private** Git repository (GitHub, GitLab, Gitea…) and clone it:
+
+```bash
+sudo mkdir -p /opt/home-budget && sudo chown "$USER": /opt/home-budget
+git clone git@github.com:you/home-budget.git /opt/home-budget
+```
+
+For a private GitHub repository, add the VM's SSH key as a read-only deploy key first (`ssh-keygen -t ed25519`, then paste `~/.ssh/id_ed25519.pub` into the repository's Settings → Deploy keys).
+
+No Git remote? Copy the folder from your computer instead:
+
+```bash
+rsync -av --exclude node_modules --exclude dist --exclude .env --exclude backups \
+  ~/home-budget/ you@your-vm:/opt/home-budget/
+```
+
+## 5. Configure
 
 ```bash
 cd /opt/home-budget
 cp .env.example .env
+chmod 600 .env
+sed -i "s|^SESSION_SECRET=.*|SESSION_SECRET=$(openssl rand -hex 32)|" .env
+sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(openssl rand -hex 24)|" .env
+nano .env
 ```
 
-| Setting | What to put |
+In the editor, set:
+
+| Setting | Value |
 | --- | --- |
-| `PUBLIC_URL` | The exact address people type, e.g. `https://budget.example.com`. It's used for origin checks and email links, so it must match. |
-| `SESSION_SECRET` | `openssl rand -hex 32`. The backend refuses to start with a short or example value. |
-| `POSTGRES_PASSWORD` | `openssl rand -hex 24`. Hex is URL-safe, which matters because the password goes into a connection URL. |
-| `TRUST_PROXY` | How many reverse proxies sit in front of the app. Use `1` for Nginx Proxy Manager, Traefik or Cloudflare Tunnel. |
-| `ALLOW_REGISTRATION` | Leave blank: anyone can register until the first account exists, then sign-up closes. `true` keeps it open; `false` keeps it closed. |
-| `SMTP_*` | Optional. Without SMTP, password resets use the CLI. |
+| `PUBLIC_URL` | `https://budget.example.com`. It must be exactly the address people type: it's used for origin checks and email links. |
+| `APP_BIND` | `127.0.0.1`, because Caddy runs on this server. |
+| `TRUST_PROXY` | `1` (Caddy). |
+| `DEFAULT_TIMEZONE` | Your time zone, e.g. `Australia/Perth`. |
+| `SMTP_*` | Optional; see [Email](#email). |
 
-### Client IPs and `TRUST_PROXY`
+Leave `ALLOW_REGISTRATION` blank. The first person to sign up becomes the owner, and sign-up then closes.
 
-Rate limits and login logs use the client's IP address. The bundled nginx is always trusted as one hop. `TRUST_PROXY` says how many more hops (your reverse proxies) to trust beyond it.
-
-- **Blank:** the backend trusts only nginx. Every request appears to come from your reverse proxy, which works but rate limits per IP become shared.
-- **The right number:** the backend uses the real client IP, and anything a client writes into `X-Forwarded-For` further back is ignored.
-
-## 3. Start
+## 6. Start the app
 
 ```bash
-docker compose up -d
-docker compose ps        # all three should become "healthy"
+docker compose up -d --build     # the first build takes a few minutes
+docker compose ps                # wait until all three show "healthy"
+curl -s http://127.0.0.1:8080/api/health/ready   # {"status":"ok","database":"ok"}
 ```
 
-The backend applies database migrations on every start.
+Migrations run automatically each time the backend starts.
 
-## Reverse proxy
+## 7. Add HTTPS with Caddy
 
-The app must be served from a domain or subdomain root. Hosting under a path like `/budget` isn't supported.
-
-### Nginx Proxy Manager
-
-Add a proxy host for `budget.example.com` forwarding to `http://<server-ip>:8080`. On the SSL tab, request a certificate and turn on **Force SSL** and **HSTS**.
-
-### Traefik
-
-Remove the `ports:` block from `frontend` in `docker-compose.yml`, attach the service to Traefik's network, and use the commented labels in the compose file as a starting point.
-
-### Cloudflare Tunnel
-
-Create a tunnel in the Cloudflare dashboard with a public hostname pointing at `http://frontend:8080`. Put the token in `CLOUDFLARE_TUNNEL_TOKEN`, then run:
+Caddy gets and renews Let's Encrypt certificates by itself.
 
 ```bash
-docker compose --profile tunnel up -d
+sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+sudo apt update && sudo apt install -y caddy
 ```
 
-Putting Cloudflare Access in front adds a second login layer.
+Replace `/etc/caddy/Caddyfile` with:
 
-## Testing on a LAN without HTTPS
-
-Session cookies are `Secure` by default, so browsers only send them over HTTPS. For a quick test over plain HTTP on your own network, set:
-
-```env
-PUBLIC_URL=http://192.168.1.50:8080
-COOKIE_SECURE=false
+```caddy
+budget.example.com {
+	reverse_proxy 127.0.0.1:8080
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	encode gzip
+}
 ```
 
-Switch back before exposing the app to the internet.
+```bash
+sudo systemctl reload caddy
+```
+
+Open `https://budget.example.com`, create your account, and you're running. Caddy sets `X-Forwarded-For` to the real client address, which is why `TRUST_PROXY=1` is correct.
+
+## 8. Nightly backups
+
+```bash
+cd /opt/home-budget
+./scripts/backup.sh && ls -l backups/     # check one works
+crontab -e
+```
+
+Add:
+
+```cron
+0 2 * * * cd /opt/home-budget && ./scripts/backup.sh >> backups/backup.log 2>&1
+```
+
+**Copy backups off the VM.** A backup on the same disk won't survive losing the VM. For example, pull them nightly from another machine:
+
+```bash
+rsync -av you@your-vm:/opt/home-budget/backups/ ~/home-budget-backups/
+```
+
+Test a restore now and then. See [backup-restore.md](backup-restore.md).
 
 ## Updating
 
@@ -89,12 +175,103 @@ cd /opt/home-budget
 ./scripts/backup.sh
 git pull
 docker compose up -d --build
+docker image prune -f      # remove the old images
 ```
+
+## Email
+
+Email is optional. Without it, password resets use the command line (`docker compose exec backend npm run reset-password -- you@example.com`) and alerts are in-app only.
+
+The server sends from **one address** for everyone (for example `Home Budget <budget@example.com>`). Each person receives mail at their own login email. Use a transactional email service (Postmark, Amazon SES, Mailgun, Brevo, Resend…) or your own mail provider's SMTP, with the domain verified (SPF and DKIM) so messages don't land in spam:
+
+```env
+SMTP_HOST=smtp.postmarkapp.com
+SMTP_PORT=587
+SMTP_USER=<from the provider>
+SMTP_PASS=<from the provider>
+SMTP_FROM=Home Budget <budget@example.com>
+```
+
+Port 465 uses TLS from the start; port 587 upgrades with STARTTLS. Apply the change with `docker compose up -d`. Many cloud providers block outgoing port 25, so use 587 or 465.
+
+## Trying it with demo data
+
+To look around before entering real data, set `SEED_DEMO=true` (and optionally `DEMO_PASSWORD`) in `.env` **before the first start**. The backend then creates `demo@example.com` with a year of realistic transactions, schedules, sinking funds, debts and goals. Without `DEMO_PASSWORD`, the password is printed in `docker compose logs backend`.
+
+On a server that's already running: `docker compose exec backend npm run seed:demo`.
+
+When you're done, delete the demo household in **Settings → Data**. That also removes the demo user, so registration opens again for your own first account (when `ALLOW_REGISTRATION` is blank).
+
+## Other ways in
+
+### Home server behind a router: Cloudflare Tunnel
+
+There's nothing to open on your router, and no public IP is needed. In the Cloudflare dashboard (Zero Trust → Networks → Tunnels), create a tunnel with a public hostname pointing at `http://frontend:8080`. Then, in `.env`:
+
+```env
+PUBLIC_URL=https://budget.example.com
+TRUST_PROXY=1
+APP_BIND=127.0.0.1
+CLOUDFLARE_TUNNEL_TOKEN=<token>
+```
+
+```bash
+docker compose --profile tunnel up -d --build
+```
+
+Skip Caddy and the 80/443 firewall rules. Adding Cloudflare Access in front gives a second login layer.
+
+### Nginx Proxy Manager or Traefik on another machine
+
+Set `APP_BIND=0.0.0.0` and allow port 8080 from that machine only (`sudo ufw allow from <proxy-ip> to any port 8080`). Remember Docker bypasses ufw for published ports, so prefer a private network between the two.
+
+- **Nginx Proxy Manager:** a proxy host to `http://<vm-ip>:8080`, with SSL, Force SSL and HSTS on.
+- **Traefik:** remove `ports:` from `frontend`, join Traefik's network, and use the commented labels in `docker-compose.yml`.
+
+### LAN only, no HTTPS
+
+For a quick test on your own network:
+
+```env
+PUBLIC_URL=http://192.168.1.50:8080
+APP_BIND=0.0.0.0
+COOKIE_SECURE=false
+TRUST_PROXY=
+```
+
+Session cookies are `Secure` by default, and browsers only send those over HTTPS, so `COOKIE_SECURE=false` is required here. Never expose this setup to the internet. For remote access without opening ports, Tailscale on the VM is a good alternative.
+
+The app must be served from a domain or subdomain root. Hosting under a path like `/budget` isn't supported.
+
+## Client IPs and `TRUST_PROXY`
+
+Rate limits and login logs use the client's IP address. The bundled nginx is always trusted as one hop. `TRUST_PROXY` says how many more proxies (yours) sit in front of it.
+
+- **Blank:** every request appears to come from your proxy. That works, but the per-IP rate limits become shared.
+- **The right number:** the backend sees the real client IP, and anything a client writes into `X-Forwarded-For` beyond your proxies is ignored.
+
+## Troubleshooting
+
+| Symptom | Fix |
+| --- | --- |
+| "This request did not come from the app" | `PUBLIC_URL` doesn't exactly match the address in the browser (scheme, host and port). Fix it, then `docker compose up -d`. |
+| Login succeeds but you're straight back at the login page | You're on plain HTTP with `COOKIE_SECURE=true`. Use HTTPS, or see [LAN only](#lan-only-no-https). |
+| "The server is not responding" / 502 | The backend is starting or has stopped: `docker compose ps` and `docker compose logs backend`. |
+| The backend exits at start with "Invalid configuration" | The log names the setting. `SESSION_SECRET` must be at least 32 characters and not the example. |
+| The build is killed or hangs | Out of memory: add swap (step 2). |
+| Caddy can't get a certificate | The DNS A record must point at this VM, and ports 80 and 443 must be open. Check `journalctl -u caddy`. |
+| Everyone gets "Too many requests" together | `TRUST_PROXY` is blank behind a proxy, so all clients share one IP. |
 
 ## Security checklist
 
-- PostgreSQL is never published to the host. Its Docker network has no outside route.
+- PostgreSQL is never published. Its Docker network has no route outside.
+- The app's port listens on `127.0.0.1` behind Caddy, and ufw allows only SSH, 80 and 443.
 - Containers run as non-root users.
-- `.env` holds every secret and is in `.gitignore`. Restrict it with `chmod 600 .env`.
+- `.env` holds every secret, is `chmod 600`, and is never committed.
+- HTTPS everywhere, with HSTS from Caddy (and from the backend when `COOKIE_SECURE` is on).
 - Banking passwords are never stored, and only the last 4 digits of account numbers.
 - Logs exclude passwords, tokens and cookies. Logins, failed logins and password changes are logged.
+- Security updates install automatically (unattended-upgrades). Update the app with `git pull && docker compose up -d --build`.
+- Backups run nightly and are copied off the server.
+
+See [security.md](security.md) for the OWASP Top 10 review.
