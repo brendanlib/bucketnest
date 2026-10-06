@@ -28,12 +28,30 @@ function monthGrid(year: number, month: number, weekStart: number) {
   return days.slice(0, days[35]!.slice(5, 7) === pad(month) ? 42 : 35);
 }
 
+const HIDE_PAID_KEY = 'hb_calendar_hide_paid';
+const readHidePaid = () => {
+  try {
+    return localStorage.getItem(HIDE_PAID_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+
+/** Paid and skipped occurrences are struck through; only that one, the schedule carries on. */
 function ItemLabel({ item }: { item: CalendarItem }) {
   const posted = item.status === 'posted';
+  const skipped = item.status === 'skipped';
   return (
-    <span className={`cal-item ${item.kind}${posted ? ' posted' : ''}${item.status === 'skipped' ? ' skipped' : ''}`}>
-      <span className="dot" style={{ background: item.colour ? bucketColour(item.colour) : 'var(--series-muted)' }} aria-hidden="true" />
+    <span className={`cal-item ${item.kind}${posted ? ' posted' : ''}${skipped ? ' skipped' : ''}`}>
+      {posted ? (
+        <span className="cal-check" aria-hidden="true">
+          ✓
+        </span>
+      ) : (
+        <span className="dot" style={{ background: item.colour ? bucketColour(item.colour) : 'var(--series-muted)' }} aria-hidden="true" />
+      )}
       <span className="truncate">{item.title}</span>
+      {posted ? <span className="sr-only"> (paid)</span> : skipped ? <span className="sr-only"> (skipped)</span> : null}
     </span>
   );
 }
@@ -43,21 +61,31 @@ export function CalendarPage() {
   const today = todayIn(timezone);
   const [cursor, setCursor] = useState(today.slice(0, 7));
   const [day, setDay] = useState<string | null>(null);
+  const [hidePaid, setHidePaidState] = useState(readHidePaid);
+  const setHidePaid = (v: boolean) => {
+    setHidePaidState(v);
+    try {
+      localStorage.setItem(HIDE_PAID_KEY, v ? '1' : '0');
+    } catch {
+      /* a per-browser preference only */
+    }
+  };
   const [y, m] = cursor.split('-').map(Number) as [number, number];
   const weekStart = 1;
   const days = useMemo(() => monthGrid(y, m, weekStart), [y, m]);
   const cal = useCalendar(days[0]!, days.at(-1)!);
+  const shown = useMemo(() => (cal.data ?? []).filter((i) => !(hidePaid && i.status === 'posted')), [cal.data, hidePaid]);
   const byDay = useMemo(() => {
     const map = new Map<string, CalendarItem[]>();
-    for (const i of cal.data ?? []) map.set(i.date, [...(map.get(i.date) ?? []), i]);
+    for (const i of shown) map.set(i.date, [...(map.get(i.date) ?? []), i]);
     return map;
-  }, [cal.data]);
+  }, [shown]);
   const move = (n: number) => {
     const total = y * 12 + (m - 1) + n;
     setCursor(`${Math.floor(total / 12)}-${pad((total % 12) + 1)}`);
   };
   const monthName = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(y, m - 1, 1)));
-  const inMonth = (cal.data ?? []).filter((i) => i.date.slice(0, 7) === cursor);
+  const inMonth = shown.filter((i) => i.date.slice(0, 7) === cursor);
   void me;
 
   return (
@@ -70,11 +98,14 @@ export function CalendarPage() {
             <strong style={{ minWidth: 150, textAlign: 'center' }} aria-live="polite">{monthName}</strong>
             <button type="button" className="btn icon" aria-label="Next month" onClick={() => move(1)}><Icon name="chevronRight" /></button>
             {cursor !== today.slice(0, 7) ? <button type="button" className="btn small" onClick={() => setCursor(today.slice(0, 7))}>Today</button> : null}
+            <button type="button" className="btn small" aria-pressed={hidePaid} onClick={() => setHidePaid(!hidePaid)}>
+              {hidePaid ? 'Show paid' : 'Hide paid'}
+            </button>
           </div>
         }
       />
       <PageTip id="calendar" title="What’s on the calendar">
-        Pay, bills, repayments and transfers from your schedules, plus sinking fund due dates and goal targets. Solid items have been recorded; outlined ones are still to come. Tap a day to mark things paid or skip them.
+        Pay, bills, repayments and transfers from your schedules, plus sinking fund due dates and goal targets. Paid ones are ticked and struck through (or hidden with “Hide paid”); the rest of each schedule stays. Tap a day to mark something paid, reschedule it, or skip it or move it to the next period.
       </PageTip>
       {cal.isPending ? (
         <Loading />
@@ -113,7 +144,9 @@ export function CalendarPage() {
 
           {/* Agenda list: the mobile view (and a readable list on desktop). */}
           <section className="card cal-agenda" aria-label={`${monthName} agenda`}>
-            {inMonth.length === 0 ? <p className="muted small">Nothing scheduled this month.</p> : null}
+            {inMonth.length === 0 ? (
+              <p className="muted small">{hidePaid && (cal.data ?? []).some((i) => i.date.slice(0, 7) === cursor) ? 'Everything this month is paid. Choose “Show paid” to see it.' : 'Nothing scheduled this month.'}</p>
+            ) : null}
             {inMonth.map((i) => (
               <button key={`${i.kind}-${i.id}`} type="button" className="list-item" style={{ width: '100%', background: 'none', border: 0, borderBottom: '1px solid var(--border)', textAlign: 'left' }} onClick={() => setDay(i.date)}>
                 <span className="num small" style={{ width: 56 }}>{formatDate(i.date, locale, 'medium').replace(/ \d{4}$/, '')}</span>
@@ -148,6 +181,9 @@ function DayPanel({ date, items, onClose }: { date: string; items: CalendarItem[
               {i.occurrence ? (
                 <div className="row wrap">
                   <OccurrenceStatusBadge status={i.occurrence.status} />
+                  {i.occurrence.edited && i.occurrence.date !== i.occurrence.occurrenceDate ? (
+                    <span className="muted small">moved from {formatDate(i.occurrence.occurrenceDate, locale)}</span>
+                  ) : null}
                   <span className="spacer" />
                   <OccurrenceActions occurrence={i.occurrence} compact />
                 </div>

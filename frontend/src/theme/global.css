@@ -347,7 +347,8 @@ a.btn { text-decoration: none; }
 .cal-day.today .cal-num { background: var(--primary); color: var(--on-primary); border-radius: 999px; padding: 0 0.45rem; }
 .cal-num { font-size: 0.8rem; font-weight: 600; align-self: flex-start; }
 .cal-item { display: flex; align-items: center; gap: 0.3rem; font-size: 0.75rem; min-width: 0; padding: 0.05rem 0.3rem; border-radius: 4px; border: 1px dashed var(--border); }
-.cal-item.posted { background: var(--surface-2); border-style: solid; border-color: transparent; }
+.cal-item.posted { background: var(--surface-2); border-style: solid; border-color: transparent; color: var(--text-3); text-decoration: line-through; }
+.cal-item .cal-check { color: var(--success); font-weight: 700; font-size: 0.7rem; width: 8px; text-align: center; }
 .cal-item.skipped { text-decoration: line-through; opacity: 0.6; }
 .cal-item.sinking_fund, .cal-item.goal { font-style: italic; }
 .cal-item .dot { width: 8px; height: 8px; }
@@ -387,3 +388,8 @@ a.btn { text-decoration: none; }
   .bucket-row > .bucket-name { grid-column: 2 / -1; }
   .bucket-row > .bucket-pct { grid-column: 2; width: 120px; }
 }
+
+/* ── Choice buttons (skip dialog) ───────────────────── */
+.choice { display: flex; flex-direction: column; align-items: flex-start; gap: 0.2rem; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.75rem 0.9rem; cursor: pointer; color: inherit; }
+.choice:hover:not(:disabled) { border-color: var(--primary); background: var(--surface-2); }
+.choice:disabled { opacity: 0.6; cursor: default; }

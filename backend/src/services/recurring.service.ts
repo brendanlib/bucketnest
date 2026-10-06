@@ -19,6 +19,7 @@ import {
 } from '../finance/recurrence.js';
 import { addDays, dateInTimeZone, diffDays, hourInTimeZone, maxDate, type DateOnly } from '../finance/dates.js';
 import { normalise } from '../finance/frequency.js';
+import { nextPeriod, periodContaining } from '../finance/periods.js';
 import type { TransactionInput, TransactionService } from './transaction.service.js';
 
 export interface RecurringInput {
@@ -285,12 +286,22 @@ export function createRecurringService(deps: Deps, transactions: TransactionServ
     },
 
     /** Projected occurrences of every active schedule in a range, with their status. */
+    /** The start of the budget period after the one `date` falls in (active budget, else household settings). */
+    async nextPeriodStartFn(householdId: string) {
+      const budget = await db.budget.findFirst({ where: { householdId, isActive: true }, select: { periodType: true, anchorDate: true } });
+      const h = budget ? null : await db.household.findUniqueOrThrow({ where: { id: householdId }, select: { budgetPeriodType: true, budgetAnchorDate: true } });
+      const type = budget?.periodType ?? h!.budgetPeriodType;
+      const anchor = dateOut(budget?.anchorDate ?? h!.budgetAnchorDate);
+      return (date: DateOnly) => nextPeriod(type, anchor, periodContaining(type, anchor, date)).start;
+    },
+
     async occurrences(householdId: string, range: { from: string; to: string }) {
       if (range.from > range.to) throw validationError('"from" must be on or before "to"', { field: 'from' });
       if (diffDays(range.to, range.from) > MAX_RANGE_DAYS) throw validationError(`Choose a range of at most ${MAX_RANGE_DAYS} days`, { field: 'to' });
       const rows = await repo.listRecurring(db, householdId);
       const todayDate = await today(householdId);
       const posted = await repo.postedOccurrences(db, householdId, rows.map((r) => r.id));
+      const nextStart = await this.nextPeriodStartFn(householdId);
       const out = [];
       for (const r of rows) {
         for (const o of generateOccurrences(specOf(r), range.from, range.to, exceptionsOf(r))) {
@@ -317,6 +328,8 @@ export function createRecurringService(deps: Deps, transactions: TransactionServ
             ...o,
             status,
             transactionId,
+            /** Where "move to next period" would put it. */
+            nextPeriodStart: nextStart(o.date),
           });
         }
       }
@@ -357,11 +370,23 @@ export function createRecurringService(deps: Deps, transactions: TransactionServ
         await repo.deleteException(db, householdId, id, dateIn(occurrenceDate));
         return;
       }
+      // A part not sent keeps its current edit, so rescheduling keeps a changed amount and vice versa.
+      const current = r.exceptions.find((e) => dateOut(e.occurrenceDate) === occurrenceDate && e.action === 'EDIT');
       await repo.upsertException(db, householdId, id, dateIn(occurrenceDate), {
         action: 'EDIT',
-        overrideAmountCents: edit.amountCents === undefined || edit.amountCents === null ? null : BigInt(edit.amountCents),
-        overrideDate: edit.date ? dateIn(edit.date) : null,
+        overrideAmountCents: edit.amountCents === undefined ? (current?.overrideAmountCents ?? null) : edit.amountCents === null ? null : BigInt(edit.amountCents),
+        overrideDate: edit.date === undefined ? (current?.overrideDate ?? null) : edit.date ? dateIn(edit.date) : null,
       });
+    },
+
+    /** Moves one occurrence to the first day of the next budget period (a deferred bill still to pay). */
+    async moveToNextPeriod(householdId: string, id: string, occurrenceDate: string) {
+      const r = await loadOrThrow(householdId, id);
+      const current = generateOccurrences(specOf(r), addDays(occurrenceDate, -400), addDays(occurrenceDate, 400), exceptionsOf(r)).find((o) => o.occurrenceDate === occurrenceDate);
+      const from = current?.date ?? occurrenceDate;
+      const date = (await this.nextPeriodStartFn(householdId))(from);
+      await this.editOccurrence(householdId, id, occurrenceDate, { date });
+      return { date };
     },
 
     /**

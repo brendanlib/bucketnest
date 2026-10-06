@@ -87,6 +87,39 @@ describe('recurring schedules', () => {
     expect((await client.get(`/api/recurring-transactions/${r.id}`)).body.nextOccurrence.date).toBe('2026-08-20');
   });
 
+  it('reschedules one occurrence, or moves it to the next budget period', async () => {
+    const r = await netflix();
+    const base = `/api/recurring-transactions/${r.id}/occurrences`;
+    const occ = async (from: string, to: string) =>
+      ((await client.get(`/api/recurring-transactions/occurrences?from=${from}&to=${to}`)).body.items as { recurringId: string; occurrenceDate: string; date: string; amountCents: number; status: string; edited: boolean; nextPeriodStart: string }[]).filter((o) => o.recurringId === r.id);
+    expect((await occ('2026-10-01', '2026-10-31'))[0]).toMatchObject({ occurrenceDate: '2026-10-20', nextPeriodStart: '2026-11-01' });
+
+    // Change the amount, then the date: the amount edit is kept.
+    await client.put(`${base}/2026-10-20`, { amountCents: 2999 });
+    expect((await client.put(`${base}/2026-10-20`, { date: '2026-10-24' })).status).toBe(204);
+    expect((await occ('2026-10-01', '2026-10-31'))[0]).toMatchObject({ date: '2026-10-24', amountCents: 2999, edited: true });
+
+    // Defer it: October no longer has it; November has it as well as its own.
+    expect((await client.post(`${base}/2026-10-20/move-to-next-period`)).body).toEqual({ date: '2026-11-01' });
+    expect(await occ('2026-10-01', '2026-10-31')).toEqual([]);
+    expect((await occ('2026-11-01', '2026-11-30')).map((o) => [o.occurrenceDate, o.date, o.amountCents, o.status])).toEqual([
+      ['2026-10-20', '2026-11-01', 2999, 'upcoming'],
+      ['2026-11-20', '2026-11-20', 2500, 'upcoming'],
+    ]);
+
+    // A skipped occurrence can be moved instead (the move replaces the skip).
+    await client.post(`${base}/2026-11-20/skip`);
+    expect((await client.post(`${base}/2026-11-20/move-to-next-period`)).body).toEqual({ date: '2026-12-01' });
+    expect((await occ('2026-12-01', '2026-12-31')).map((o) => [o.occurrenceDate, o.status])).toEqual([
+      ['2026-11-20', 'upcoming'],
+      ['2026-12-20', 'upcoming'],
+    ]);
+
+    // Recorded ones stay put.
+    await client.post(`${base}/2026-09-20/post`);
+    expect((await client.post(`${base}/2026-09-20/move-to-next-period`)).status).toBe(409);
+  });
+
   it('lets "mark paid" record what actually happened', async () => {
     const r = await netflix({ amountKind: 'ESTIMATE' });
     const draft = await client.get(`/api/recurring-transactions/${r.id}/occurrences/2026-10-20/draft`);

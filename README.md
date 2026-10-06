@@ -40,7 +40,7 @@ A self-hosted household budget app built on the Barefoot Investor bucket method:
   - Keep several budgets, copy one, and choose which is active.
 - **Recurring schedules:**
   - Pay, bills, repayments, transfers and savings that repeat. They project occurrences but never create future transactions.
-  - Mark paid (pre-filled and editable), skip, edit one occurrence, or edit the series from a date onward.
+  - Mark paid (pre-filled and editable), skip, move one to the next budget period, reschedule or edit one occurrence, or edit the series from a date onward.
   - Auto-post records an occurrence on its day, from 02:00 household time.
   - Monthly dates keep their day and clamp at month end. Weekend dates can move to the Friday before or the Monday after.
 - **Sinking funds:**
@@ -82,7 +82,10 @@ A self-hosted household budget app built on the Barefoot Investor bucket method:
   - **Debt reduction:** each debt's actual balance, then its projected payoff.
   - **Forecast:** for 1–12 months — per category, per bucket, income, and every account's month-end balance.
 - **Net worth:** account balances plus dated valuations for property, vehicles and anything else you own, less what you owe. It comes with a breakdown table and a history chart that is recomputed from transactions. A snapshot is also stored on the 1st of each month.
-- **Calendar:** pay, bills, repayments and transfers, sinking fund due dates and goal targets. Recorded and upcoming items look different. On desktop it's a month grid; on mobile, an agenda list. Tap a day to mark items paid or skip them.
+- **Calendar:** pay, bills, repayments and transfers, sinking fund due dates and goal targets. On desktop it's a month grid; on mobile, an agenda list.
+  - A paid item is ticked and struck through, and *Hide paid* removes it. The rest of its schedule carries on.
+  - Tap a day to mark an item paid, **reschedule** that one occurrence (tomorrow, a week later, the next period or any date), or **skip** it.
+  - Skip asks whether it isn't happening at all, or should **move to the next budget period** (it still needs paying, just later).
 - **Getting started:**
   - On first login a welcome screen explains the buckets.
   - A dashboard checklist (accounts, pay, bills, budget, transactions, savings) ticks itself off from your data.

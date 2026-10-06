@@ -309,6 +309,8 @@ export interface Occurrence {
   edited: boolean;
   status: OccurrenceStatus;
   transactionId: string | null;
+  /** Where "move to next period" would put it (absent where only the schedule's next date is known). */
+  nextPeriodStart?: string;
 }
 
 export interface DashboardBucket {

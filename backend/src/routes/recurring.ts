@@ -74,6 +74,7 @@ export const OccurrenceResponse = z.object({
   edited: z.boolean(),
   status: z.enum(['posted', 'skipped', 'overdue', 'due', 'upcoming']),
   transactionId: z.string().nullable(),
+  nextPeriodStart: z.string().describe('Where "move to next period" would put this occurrence'),
 });
 
 const OccurrenceParams = z.strictObject({ id: Id, date: DateOnly });
@@ -161,6 +162,18 @@ export const recurringRoutes =
       return reply.status(204).send(null);
     });
 
+    app.post(
+      `${base}/:id/occurrences/:date/move-to-next-period`,
+      {
+        schema: {
+          tags: ['recurring'],
+          description: 'Defers this occurrence to the first day of the next budget period. The schedule is unchanged.',
+          params: OccurrenceParams,
+          response: { 200: z.object({ date: z.string() }) },
+        },
+      },
+      async (request) => services.recurring.moveToNextPeriod(authOf(request).householdId, request.params.id, request.params.date),
+    );
     app.post(`${base}/:id/occurrences/:date/unskip`, { schema: { tags: ['recurring'], params: OccurrenceParams, response: { 204: z.null() } } }, async (request, reply) => {
       await services.recurring.unskipOccurrence(authOf(request).householdId, request.params.id, request.params.date);
       return reply.status(204).send(null);
