@@ -19,12 +19,6 @@ enum MemberRole {
   MEMBER
 }
 
-enum BucketKey {
-  BILLS
-  SMILE
-  SPLURGE
-  FIRE_EXTINGUISHER
-}
 
 enum CategoryKind {
   INCOME
@@ -339,8 +333,10 @@ model HouseholdMember {
 model Bucket {
   id          String    @id @default(uuid()) @db.Uuid
   householdId String    @map("household_id") @db.Uuid
-  /// Stable identity used by the financial rules; the name is editable.
-  key         BucketKey
+  /// Stable identity; the name is editable. BILLS and FIRE_EXTINGUISHER carry
+  /// the financial rules (minimum repayments; saving) and can't be deleted.
+  /// Buckets a household adds get CUSTOM_<random>.
+  key         String
   name        String
   percentage  Decimal   @db.Decimal(5, 2)
   sortOrder   Int       @map("sort_order")

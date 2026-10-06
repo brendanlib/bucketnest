@@ -21,6 +21,7 @@ import { useHousehold } from '../lib/household';
 import { strings } from '../locales/en-AU';
 import { SavedBar } from './SinkingFundsPage';
 import { describeFrequency } from './RecurringPage';
+import { useBucketNames, withBucketNames } from '../lib/bucketNames';
 
 const FREQUENCIES: Frequency[] = ['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY'];
 const ESTIMATE_NOTE = 'Estimates only — lenders calculate interest in slightly different ways.';
@@ -35,6 +36,7 @@ function WarningNote({ warning }: { warning: DebtWarning }) {
 }
 
 export function DebtsPage() {
+  const names = useBucketNames();
   const debts = useDebts();
   const accounts = useAccounts();
   const { locale } = useHousehold();
@@ -49,7 +51,7 @@ export function DebtsPage() {
     <>
       <PageHeader title="Debts" subtitle={ESTIMATE_NOTE} />
       <PageTip id="debts" title="Paying debt down faster">
-        Repayments up to the minimum count as Bills; anything extra counts as Fire Extinguisher. Try an extra amount on a debt’s payoff plan to see the time and interest it saves. These are estimates — lenders calculate slightly differently.
+        {withBucketNames('Repayments up to the minimum count as Bills; anything extra counts as Fire Extinguisher.', names)} Try an extra amount on a debt’s payoff plan to see the time and interest it saves. These are estimates — lenders calculate slightly differently.
       </PageTip>
       {debts.data.length === 0 && missing.length === 0 ? (
         <div className="card">
@@ -393,6 +395,7 @@ export function DebtDetailPage() {
 }
 
 function DebtForm({ debt, accountId, onClose }: { debt?: Debt; accountId: string; onClose: () => void }) {
+  const names = useBucketNames();
   const accounts = useAccounts();
   const categories = useCategories();
   const buckets = useBuckets();
@@ -469,7 +472,7 @@ function DebtForm({ debt, accountId, onClose }: { debt?: Debt; accountId: string
             {(p) => <input {...p} className="input right" inputMode="decimal" value={form.annualRate} onChange={(e) => setForm({ ...form, annualRate: e.target.value })} placeholder="6.25" />}
           </Field>
           <Field label="Original amount borrowed">{(p) => <MoneyInput {...p} value={form.originalBalanceCents} onChange={(c) => setForm({ ...form, originalBalanceCents: c })} />}</Field>
-          <Field label="Minimum repayment" error={err('minRepaymentCents')} hint="Up to this counts in Bills; anything more counts in Fire Extinguisher.">
+          <Field label="Minimum repayment" error={err('minRepaymentCents')} hint={`Up to this counts in ${names.bills}; anything more counts in ${names.saving}.`}>
             {(p) => <MoneyInput {...p} value={form.minRepaymentCents} onChange={(c) => setForm({ ...form, minRepaymentCents: c })} />}
           </Field>
           <Field label="How often">
@@ -493,7 +496,7 @@ function DebtForm({ debt, accountId, onClose }: { debt?: Debt; accountId: string
               {(p) => <DateInput {...p} value={form.startDate} onChange={(d) => setForm({ ...form, startDate: d })} />}
             </Field>
           )}
-          <Field label="Bills category for the minimum" hint="Defaults to Mortgage, Loan repayments or Credit card repayments." error={err('categoryId')}>
+          <Field label={`${names.bills} category for the minimum`} hint="Defaults to Mortgage, Loan repayments or Credit card repayments." error={err('categoryId')}>
             {(p) => <CategorySelect {...p} categories={categories.data ?? []} buckets={buckets.data ?? []} kind="EXPENSE" bucketKeys={['BILLS']} placeholder="Default" value={form.categoryId} onChange={(id) => setForm({ ...form, categoryId: id })} />}
           </Field>
         </div>

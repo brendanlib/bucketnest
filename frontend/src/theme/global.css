@@ -323,8 +323,9 @@ tr.row-problem td { background: var(--danger-soft); }
 a.btn { text-decoration: none; }
 
 /* Bucket colours: a validated categorical set (all pairs, both modes). */
-:root { --bucket-1: #2a78d6; --bucket-2: #4a3aa7; --bucket-3: #1baf7a; --bucket-4: #eb6834; }
-:root[data-theme='dark'] { --bucket-1: #256abf; --bucket-2: #9085e9; --bucket-3: #1baf7a; --bucket-4: #d95926; }
+:root { --bucket-1: #2a78d6; --bucket-2: #4a3aa7; --bucket-3: #1baf7a; --bucket-4: #eb6834; --bucket-5: #eda100; --bucket-6: #008300; --bucket-7: #e87ba4; --bucket-8: #e34948; }
+/* Dark steps from the validated palette; each position table was checked in both modes. */
+:root[data-theme='dark'] { --bucket-1: #256abf; --bucket-2: #9085e9; --bucket-3: #1baf7a; --bucket-4: #d95926; --bucket-5: #c98500; --bucket-6: #008300; --bucket-7: #d55181; --bucket-8: #e66767; }
 
 /* Chart series (non-bucket): validated categorical slots, light and dark. */
 :root { --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --series-4: #4a3aa7; --series-muted: #a3acb9; --ink: #0f172a; --grid: #e2e8f0; }
@@ -375,3 +376,14 @@ a.btn { text-decoration: none; }
 
 /* ── Household switcher ─────────────────────────────── */
 .household-switch { width: auto; max-width: min(320px, 50vw); font-weight: 650; padding-block: 0.35rem; }
+
+/* ── Bucket editor ──────────────────────────────────── */
+.stack-xs { display: flex; flex-direction: column; gap: 0.25rem; }
+.bucket-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.75rem; }
+.bucket-row { display: grid; grid-template-columns: 12px minmax(0, 1fr) 120px auto; gap: 0.6rem; align-items: start; }
+.bucket-row > .dot { margin-top: 0.85rem; }
+@media (max-width: 600px) {
+  .bucket-row { grid-template-columns: 12px minmax(0, 1fr) auto; }
+  .bucket-row > .bucket-name { grid-column: 2 / -1; }
+  .bucket-row > .bucket-pct { grid-column: 2; width: 120px; }
+}

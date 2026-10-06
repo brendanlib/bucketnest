@@ -13,6 +13,9 @@ Users, sessions and reset tokens are identity records rather than household data
 - **Amounts** are integer cents (`BIGINT`) and travel through the API as `amountCents`.
 - **Interest rates** are `NUMERIC(7,4)` annual percentages.
 - **Bucket percentages** are `NUMERIC(5,2)` and must total exactly 100.00.
+- **Buckets per household:** 2 to 8. `buckets.key` is stable while the name changes.
+  - `BILLS` and `FIRE_EXTINGUISHER` carry the rules and can't be removed. The API reports their roles as `BILLS` and `SAVING`; any other bucket's role is `SPENDING`.
+  - Smile and Splurge (`SMILE`, `SPLURGE`) and buckets a household adds (`CUSTOM_<random>`) are ordinary spending buckets. Removing one moves its categories, its account tags and its percentage to a chosen bucket, all in one transaction.
 - **Maths** lives in `backend/src/finance` as pure functions, using decimal.js where fractions appear. Rounding is half away from zero, and only at the end.
 
 ## Balances
@@ -210,6 +213,12 @@ Each schedule's occurrences (posted ones link to their transaction), sinking fun
 ## Colours
 
 - **Bucket colours:** Bills `#2A78D6`, Smile `#4A3AA7`, Splurge `#1BAF7A`, Fire Extinguisher `#EB6834`. This set passed the palette validator on all pairs in light mode: CVD ΔE ≥ 9.2 and normal-vision ΔE ≥ 16.3.
+  - **Added buckets:**
+    - A new bucket is placed straight after Bills and takes the first unused colour from yellow `#EDA100`, magenta `#E87BA4`, green `#008300` and red `#E34948`.
+    - That arrangement passed the validator's neighbour checks in light and dark mode at 5, 6, 7 and 8 buckets.
+    - Colours stay with their bucket: reordering or removing buckets never repaints the others.
+  - **Rejected alternatives:** adding new buckets before Fire Extinguisher fails, because every extra hue sits too close to its orange. So does assigning colours by position, which repaints existing buckets whenever one is added.
+  - **Limits:** a household that reorders buckets or picks its own colours may end up with a weaker neighbouring pair. Every bucket view also has labels, a legend and a table, so colour is never the only cue.
 - **Dark mode:** uses `#256ABF`, `#9085E9`, `#1BAF7A`, `#D95926`, which also pass on all pairs.
 - **Contrast relief:** aqua is under 3:1 on white, so every chart that uses it carries labels, a legend or a table view.
 - **Migration:** an earlier default set put Smile and Splurge 3.8 ΔE apart under deuteranopia. Households still on those defaults were migrated to the new set.

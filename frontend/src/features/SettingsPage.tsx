@@ -16,7 +16,7 @@ import { formatDateTime } from '../lib/format';
 import { useHousehold } from '../lib/household';
 import { getThemePref, setThemePref, type ThemePref } from '../lib/theme';
 import { strings } from '../locales/en-AU';
-import { PercentageEditor } from './PercentageEditor';
+import { BucketEditor } from './BucketEditor';
 
 const SECTIONS = ['Budget', 'Localisation', 'Notifications', 'Household', 'Security', 'Data', 'Appearance'] as const;
 type Section = (typeof SECTIONS)[number];
@@ -77,7 +77,11 @@ function useSaveSettings() {
 function BudgetSettings({ settings }: { settings: Settings }) {
   const buckets = useBuckets();
   const toast = useToast();
-  const saveBuckets = useApiMutation((b: { id: string; percentage: string }[]) => api.put('/buckets', { buckets: b }), [keys.buckets, ['dashboard'], ['budgets']]);
+  // Bucket changes touch every view that groups by bucket.
+  const bucketViews = [keys.buckets, ['dashboard'], ['budgets'], ['categories'], ['accounts'], ['reports'], ['calendar']];
+  const saveBuckets = useApiMutation((b: { id: string; name: string; percentage: string }[]) => api.put('/buckets', { buckets: b }), bucketViews);
+  const addBucket = useApiMutation((name: string) => api.post('/buckets', { name }), bucketViews);
+  const removeBucket = useApiMutation((v: { id: string; moveTo: string }) => api.delete<{ movedCategories: number }>(`/buckets/${v.id}`, { moveTo: v.moveTo }), bucketViews);
   const { save, isPending } = useSaveSettings();
   const [form, setForm] = useState({
     budgetPeriodType: settings.budgetPeriodType,
@@ -91,20 +95,37 @@ function BudgetSettings({ settings }: { settings: Settings }) {
 
   return (
     <>
-      <Card title="Bucket percentages" description="How take-home income is shared across the buckets. Must total exactly 100%.">
+      <Card title="Buckets" description="Name your buckets, put them in order and share take-home income across them (exactly 100%). Up to 8 buckets.">
         {buckets.isPending ? (
           <Loading />
         ) : buckets.isError ? (
           <ErrorState error={buckets.error} />
         ) : (
-          <PercentageEditor
+          <BucketEditor
             key={buckets.dataUpdatedAt}
             buckets={buckets.data}
             saving={saveBuckets.isPending}
-            onSave={async (values) => {
+            onSave={async (rows) => {
               try {
-                await saveBuckets.mutateAsync(values);
-                toast('Percentages saved');
+                await saveBuckets.mutateAsync(rows);
+                toast('Buckets saved');
+              } catch (err) {
+                toast(errorMessage(err), 'error');
+              }
+            }}
+            onAdd={async (name) => {
+              try {
+                await addBucket.mutateAsync(name);
+                toast(`${name} added at 0%`);
+              } catch (err) {
+                toast(errorMessage(err), 'error');
+                throw err;
+              }
+            }}
+            onRemove={async (id, moveTo) => {
+              try {
+                const r = await removeBucket.mutateAsync({ id, moveTo });
+                toast(`Bucket removed; ${r.movedCategories} categor${r.movedCategories === 1 ? 'y' : 'ies'} moved`);
               } catch (err) {
                 toast(errorMessage(err), 'error');
               }

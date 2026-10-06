@@ -8,6 +8,7 @@ import { getSidebarCollapsed, setSidebarCollapsed } from '../lib/theme';
 import { Modal } from './Modal';
 import { NotificationBell } from './NotificationBell';
 import { HouseholdSwitcher } from './HouseholdSwitcher';
+import { useBucketNames } from '../lib/bucketNames';
 
 interface NavItem {
   to: string;
@@ -15,8 +16,8 @@ interface NavItem {
   icon: string;
 }
 
-/** Only pages that exist are listed; later build phases add Overview and Fire Extinguisher groups. */
-export const NAV: { group: string; items: NavItem[] }[] = [
+/** The sidebar. The saving bucket's group and page take that bucket's (editable) name. */
+const navFor = (saving: string): { group: string; items: NavItem[] }[] => [
   {
     group: 'Overview',
     items: [
@@ -39,9 +40,9 @@ export const NAV: { group: string; items: NavItem[] }[] = [
     ],
   },
   {
-    group: 'Fire Extinguisher',
+    group: saving,
     items: [
-      { to: '/fire-extinguisher', label: 'Fire Extinguisher', icon: 'shield' },
+      { to: '/fire-extinguisher', label: saving, icon: 'shield' },
       { to: '/debts', label: 'Debts', icon: 'debt' },
     ],
   },
@@ -68,6 +69,7 @@ export function Layout() {
   const [moreOpen, setMoreOpen] = useState(false);
   const { me } = useHousehold();
   const navigate = useNavigate();
+  const NAV = navFor(useBucketNames().saving);
   const qc = useQueryClient();
 
   async function logout() {

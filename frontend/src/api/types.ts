@@ -1,4 +1,6 @@
-export type BucketKey = 'BILLS' | 'SMILE' | 'SPLURGE' | 'FIRE_EXTINGUISHER';
+/** BILLS and FIRE_EXTINGUISHER carry the budgeting rules; households add CUSTOM_* buckets. */
+export type BucketKey = string;
+export type BucketRole = 'BILLS' | 'SAVING' | 'SPENDING';
 
 export interface Me {
   user: { id: string; email: string; name: string; dismissedTips: string[] };
@@ -9,10 +11,12 @@ export interface Me {
 export interface Bucket {
   id: string;
   key: BucketKey;
+  role: BucketRole;
   name: string;
   percentage: string;
   sortOrder: number;
   colour: string;
+  deletable: boolean;
 }
 
 export interface Category {

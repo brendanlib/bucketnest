@@ -13,7 +13,14 @@ A self-hosted household budget app built on the Barefoot Investor bucket method:
   - Loan repayments split automatically into the minimum (Bills) and any extra (Fire Extinguisher).
   - Refunds reduce their category.
   - Card interest is an *Interest and fees* expense.
-- **Buckets and categories:** seeded with the Australian defaults. You can rename, reorder, move, disable or delete categories (deleting one with history reassigns it). Bucket percentages must total exactly 100%.
+- **Buckets and categories:**
+  - Every household starts with the four Barefoot buckets and Australian default categories.
+  - Buckets: rename any bucket, reorder them, and have 2 to 8. New buckets start at 0% and go in after Bills. Bucket percentages must total exactly 100%.
+  - Removing a bucket moves its categories (with their history), tagged accounts and percentage into a bucket you choose.
+  - Two buckets carry the budgeting rules, so they can be renamed but not removed:
+    - the **Bills** bucket holds bills and minimum debt repayments;
+    - the **saving** bucket (Fire Extinguisher) counts as saving rather than spending, and takes extra repayments and savings goals.
+  - Categories: rename, reorder, move, disable or delete them (deleting one with history reassigns it).
 - **Security:**
   - Argon2id passwords and server-side sessions in HTTP-only cookies, revocable instantly.
   - CSRF tokens, Origin checks, per-IP and per-email rate limits with backoff.

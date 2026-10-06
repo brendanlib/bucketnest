@@ -17,6 +17,7 @@ import { bucketColour } from '../lib/colours';
 import { resolveColour } from '../lib/chartTheme';
 import { monthLabel, presetRange, PRESET_LABELS, trimLeading, type Preset } from '../lib/presets';
 import { TableWrap } from '../components/TableWrap';
+import { useBucketNames, withBucketNames } from '../lib/bucketNames';
 
 const TABS = [
   { key: 'spending', label: 'Spending' },
@@ -28,6 +29,7 @@ const TABS = [
 type Tab = (typeof TABS)[number]['key'];
 
 export function ReportsPage() {
+  const names = useBucketNames();
   const [params, setParams] = useSearchParams();
   const tab = (params.get('tab') as Tab) ?? 'spending';
   const settings = useSettings();
@@ -41,7 +43,7 @@ export function ReportsPage() {
     <>
       <PageHeader title="Reports" subtitle="Where the money went, and where it’s heading." />
       <PageTip id="reports" title="Reading the reports">
-        Spending is net of refunds and includes bills paid from sinking funds. Money moved into the Fire Extinguisher bucket is shown as saving, not spending. Every chart has a table view and a CSV download.
+        Spending is net of refunds and includes bills paid from sinking funds. {withBucketNames('Money moved into the Fire Extinguisher bucket is shown as saving, not spending.', names)} Every chart has a table view and a CSV download.
       </PageTip>
       <TabList label="Report" id="report" tabs={TABS} value={tab} onChange={(key) => setParams({ tab: key }, { replace: true })} />
       <div className="stack" {...tabPanelProps('report', tab)}>
@@ -88,6 +90,7 @@ export function ReportsPage() {
 }
 
 function SpendingReport({ range }: { range: { from: string; to: string } }) {
+  const names = useBucketNames();
   const buckets = useBuckets();
   const categories = useCategories(true);
   const accounts = useAccounts(true);
@@ -141,7 +144,7 @@ function SpendingReport({ range }: { range: { from: string; to: string } }) {
       <div className="grid-2">
         <ChartCard
           title="Spending by bucket"
-          subtitle="Net of refunds. Fire Extinguisher is money saved."
+          subtitle={`Net of refunds. ${names.saving} is money saved.`}
           csvUrl={csv('bucket')}
           table={
             <table className="table">
@@ -237,6 +240,7 @@ function SpendingReport({ range }: { range: { from: string; to: string } }) {
 }
 
 function IncomeReport({ range }: { range: { from: string; to: string } }) {
+  const names = useBucketNames();
   const report = useIncomeReport(range);
   const kit = useChartKit();
   const { locale } = useHousehold();
@@ -252,7 +256,7 @@ function IncomeReport({ range }: { range: { from: string; to: string } }) {
         <div className="card">
           <div className="stat-label">Savings rate</div>
           <div className="stat-value">{r.totals.savingsRate === null ? '—' : `${r.totals.savingsRate.toFixed(2)}%`}</div>
-          <div className="muted small">(income − spending) ÷ income · <Money cents={r.totals.savedCents} /> into Fire Extinguisher</div>
+          <div className="muted small">(income − spending) ÷ income · <Money cents={r.totals.savedCents} /> into {names.saving}</div>
         </div>
       </div>
       <ChartCard

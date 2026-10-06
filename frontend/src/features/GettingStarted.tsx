@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router';
-import { useDismissTip, useOnboarding } from '../api/hooks';
+import { useBuckets, useDismissTip, useOnboarding } from '../api/hooks';
+import { bucketColour } from '../lib/colours';
 import type { OnboardingStep } from '../api/types';
 import { Modal } from '../components/Modal';
 import { useHousehold } from '../lib/household';
@@ -37,13 +38,21 @@ const STEPS: Record<OnboardingStep, { title: string; why: string; to: string; ac
   },
   savings: {
     title: 'Start saving for something',
-    why: 'A sinking fund for a big irregular bill like rego, or a Fire Extinguisher goal like an emergency fund.',
+    why: 'A sinking fund for a big irregular bill like rego, or a savings goal like an emergency fund.',
     to: '/sinking-funds',
     action: 'Start a sinking fund',
   },
 };
 
 /** The getting-started checklist on the dashboard. Steps tick themselves off as the household fills in. */
+/** What the default buckets are for, shown in the welcome. Buckets a household adds just show their name. */
+const BUCKET_ABOUT: Record<string, string> = {
+  BILLS: 'essentials and fixed costs',
+  SMILE: 'saving for things you’ll enjoy',
+  SPLURGE: 'guilt-free spending',
+  FIRE_EXTINGUISHER: 'emergency fund, debt and investing',
+};
+
 export function GettingStarted() {
   const onboarding = useOnboarding();
   const dismiss = useDismissTip();
@@ -102,6 +111,7 @@ export function GettingStarted() {
 
 /** First-login welcome: the bucket idea in one screen, then straight to the first step. */
 export function WelcomeDialog() {
+  const buckets = useBuckets();
   const onboarding = useOnboarding();
   const dismiss = useDismissTip();
   const navigate = useNavigate();
@@ -127,22 +137,16 @@ export function WelcomeDialog() {
       }
     >
       <div className="stack">
-        <p>Home Budget follows the Barefoot Investor bucket method. Your take-home pay is shared across four buckets:</p>
+        <p>Home Budget follows the Barefoot Investor bucket method. Your take-home pay is shared across {buckets.data?.length ?? 4} buckets:</p>
         <ul className="bucket-legend">
-          <li>
-            <span className="dot" style={{ background: 'var(--bucket-1)' }} aria-hidden="true" /> <strong>Bills</strong> — essentials and fixed costs (60%)
-          </li>
-          <li>
-            <span className="dot" style={{ background: 'var(--bucket-2)' }} aria-hidden="true" /> <strong>Smile</strong> — saving for things you’ll enjoy (10%)
-          </li>
-          <li>
-            <span className="dot" style={{ background: 'var(--bucket-3)' }} aria-hidden="true" /> <strong>Splurge</strong> — guilt-free spending (10%)
-          </li>
-          <li>
-            <span className="dot" style={{ background: 'var(--bucket-4)' }} aria-hidden="true" /> <strong>Fire Extinguisher</strong> — emergency fund, debt and investing (20%)
-          </li>
+          {(buckets.data ?? []).map((b) => (
+            <li key={b.id}>
+              <span className="dot" style={{ background: bucketColour(b.colour) }} aria-hidden="true" /> <strong>{b.name}</strong>
+              {BUCKET_ABOUT[b.key] ? ` — ${BUCKET_ABOUT[b.key]}` : ''} ({Number(b.percentage)}%)
+            </li>
+          ))}
         </ul>
-        <p className="muted small">You pick a category for each expense and the bucket follows. You can change the percentages any time in Settings.</p>
+        <p className="muted small">You pick a category for each expense and the bucket follows. You can rename buckets, add your own and change the percentages any time in Settings.</p>
         <p>
           It takes about ten minutes to set up. There’s a checklist on the dashboard, and each step ticks itself off as you go.
         </p>

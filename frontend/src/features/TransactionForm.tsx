@@ -14,6 +14,7 @@ import { useToast } from '../components/Toast';
 import { strings } from '../locales/en-AU';
 import { todayIn } from '../lib/format';
 import { useHousehold } from '../lib/household';
+import { useBucketNames, withBucketNames } from '../lib/bucketNames';
 
 const PRIMARY_TYPES: TransactionType[] = ['EXPENSE', 'INCOME', 'TRANSFER', 'REFUND'];
 const OTHER_TYPES: TransactionType[] = ['DEBT_REPAYMENT', 'SAVINGS_CONTRIBUTION', 'BALANCE_ADJUSTMENT', 'INTEREST_CHARGE'];
@@ -48,6 +49,7 @@ export function TransactionForm({
   onSaved?: (saved: Transaction) => void;
   onClose: () => void;
 }) {
+  const names = useBucketNames();
   const { timezone } = useHousehold();
   const accounts = useAccounts(true);
   const categories = useCategories(true);
@@ -178,7 +180,7 @@ export function TransactionForm({
               </button>
             ) : null}
           </div>
-          <p className="muted small">{strings.transactionTypeHelp[type]}</p>
+          <p className="muted small">{withBucketNames(strings.transactionTypeHelp[type], names)}</p>
         </div>
         <FormError error={generalError} />
 
@@ -207,7 +209,7 @@ export function TransactionForm({
             )}
           </Field>
           {TWO_ACCOUNT.includes(type) ? (
-            <Field label="To account" error={err('toAccountId')} hint={type === 'SAVINGS_CONTRIBUTION' ? 'Accounts tagged Fire Extinguisher.' : undefined}>
+            <Field label="To account" error={err('toAccountId')} hint={type === 'SAVINGS_CONTRIBUTION' ? `Accounts tagged ${names.saving}.` : undefined}>
               {(p) => <AccountSelect {...p} accounts={accountList} value={form.toAccountId} filter={toFilter} onChange={(id) => setForm({ ...form, toAccountId: id })} />}
             </Field>
           ) : null}
@@ -283,7 +285,7 @@ export function TransactionForm({
         ) : null}
 
         {type === 'SAVINGS_CONTRIBUTION' ? (
-          <Field label="Fire Extinguisher category" hint="Defaults to Savings contributions.">
+          <Field label={`${names.saving} category`} hint="Defaults to Savings contributions.">
             {(p) => (
               <CategorySelect
                 {...p}
@@ -300,7 +302,7 @@ export function TransactionForm({
         ) : null}
         {type === 'DEBT_REPAYMENT' ? (
           <p className="muted small">
-            For loans, the minimum repayment counts in Bills and anything extra counts in Fire Extinguisher. For cards set to Transfer, the repayment counts as nothing because the purchases were already counted.
+            {withBucketNames('For loans, the minimum repayment counts in Bills and anything extra counts in Fire Extinguisher. For cards set to Transfer, the repayment counts as nothing because the purchases were already counted.', names)}
           </p>
         ) : null}
         {transaction?.splits.some((s) => s.isExtraRepayment) && type === 'DEBT_REPAYMENT' ? (

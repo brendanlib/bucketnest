@@ -1,9 +1,24 @@
-import type { BucketKey, NotificationType } from '@prisma/client';
+import type { NotificationType } from '@prisma/client';
+
+export type BucketKey = string;
+
+/** The two buckets the financial rules depend on. Renamable, never deletable. */
+export const BILLS_KEY = 'BILLS';
+export const SAVING_KEY = 'FIRE_EXTINGUISHER';
+export const MIN_BUCKETS = 2;
+export const MAX_BUCKETS = 8;
 
 /**
- * Bucket colours are validated as a categorical set (colour-blind safe on all
- * pairs, light and dark): see docs/data-model.md. Dark mode uses darker steps.
+ * Colours for buckets a household adds, in the order they're handed out. A new
+ * bucket goes straight after Bills and takes the first colour not in use, so
+ * existing buckets never change colour. That arrangement was checked with the
+ * dataviz palette validator (lightness, chroma, colour-blind and normal-vision
+ * separation of neighbours) for 5, 6, 7 and 8 buckets, light and dark; e.g. with
+ * all eight: Bills, red, green, magenta, yellow, Smile, Splurge, Fire Extinguisher.
+ * Dark mode swaps each hex for its darker step in CSS.
  */
+export const EXTRA_BUCKET_COLOURS = ['#EDA100', '#E87BA4', '#008300', '#E34948'];
+
 export const DEFAULT_BUCKETS: { key: BucketKey; name: string; percentage: string; colour: string; sortOrder: number }[] = [
   { key: 'BILLS', name: 'Bills', percentage: '60.00', colour: '#2A78D6', sortOrder: 1 },
   { key: 'SMILE', name: 'Smile', percentage: '10.00', colour: '#4A3AA7', sortOrder: 2 },

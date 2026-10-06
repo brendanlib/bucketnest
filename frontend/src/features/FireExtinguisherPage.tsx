@@ -19,6 +19,7 @@ import { useHousehold } from '../lib/household';
 import { strings } from '../locales/en-AU';
 import { SavedBar } from './SinkingFundsPage';
 import { describeFrequency } from './RecurringPage';
+import { useBucketNames, withBucketNames } from '../lib/bucketNames';
 
 const GOAL_TYPES: { value: Goal['type']; label: string }[] = [
   { value: 'EMERGENCY_FUND', label: 'Emergency fund' },
@@ -29,6 +30,7 @@ const FREQUENCIES: Frequency[] = ['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY
 
 export function FireExtinguisherPage() {
   const goals = useGoals();
+  const names = useBucketNames();
   const accounts = useAccounts();
   const { locale } = useHousehold();
   const [editing, setEditing] = useState<Goal | 'new' | null>(null);
@@ -44,8 +46,8 @@ export function FireExtinguisherPage() {
   return (
     <>
       <PageHeader
-        title="Fire Extinguisher"
-        subtitle="Your emergency fund, savings goals and investments. The top goal gets spare Fire Extinguisher money first."
+        title={names.saving}
+        subtitle={withBucketNames('Your emergency fund, savings goals and investments. The top goal gets spare Fire Extinguisher money first.', names)}
         actions={
           <>
             <Link to="/debts" className="btn">
@@ -57,8 +59,8 @@ export function FireExtinguisherPage() {
           </>
         }
       />
-      <PageTip id="fire-extinguisher" title="The Fire Extinguisher bucket">
-        Barefoot’s order: build an emergency fund first, then pay down debt, then invest. Put your goals in that order — the top one gets spare Fire Extinguisher money first.
+      <PageTip id="fire-extinguisher" title={`The ${names.saving} bucket`}>
+        {withBucketNames('Barefoot’s order: build an emergency fund first, then pay down debt, then invest. Put your goals in that order — the top one gets spare Fire Extinguisher money first.', names)}
       </PageTip>
       <section className="stack" aria-labelledby="goals-h">
         <h2 id="goals-h">Goals</h2>
@@ -72,7 +74,7 @@ export function FireExtinguisherPage() {
                 </button>
               }
             >
-              The Barefoot approach: a Fire Extinguisher fund of a few months’ expenses, then attack debt, then invest.
+              The Barefoot approach: an emergency fund of a few months’ expenses, then attack debt, then invest.
             </EmptyState>
           </div>
         ) : (

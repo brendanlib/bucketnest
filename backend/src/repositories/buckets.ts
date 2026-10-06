@@ -7,5 +7,5 @@ export const updateBucket = (
   db: DbTx,
   householdId: string,
   id: string,
-  data: { name?: string; colour?: string; percentage?: string },
+  data: { name?: string; colour?: string; percentage?: string; sortOrder?: number },
 ) => db.bucket.updateMany({ where: { householdId, id }, data });

@@ -11,10 +11,12 @@ import { useToast } from '../components/Toast';
 import { ASSET_TYPES, LIABILITY_TYPES, strings } from '../locales/en-AU';
 import { todayIn } from '../lib/format';
 import { useHousehold } from '../lib/household';
+import { useBucketNames, withBucketNames } from '../lib/bucketNames';
 
 const isLiability = (t: AccountType) => LIABILITY_TYPES.includes(t);
 
 export function AccountForm({ account, onClose, onSaved }: { account?: Account; onClose: () => void; onSaved?: (a: Account) => void }) {
+  const names = useBucketNames();
   const { timezone } = useHousehold();
   const buckets = useBuckets();
   const accounts = useAccounts(true);
@@ -122,7 +124,7 @@ export function AccountForm({ account, onClose, onSaved }: { account?: Account; 
             )}
           </Field>
           {!liability ? (
-            <Field label="Bucket tag" hint="Money moved into a Fire Extinguisher account counts as a savings contribution.">
+            <Field label="Bucket tag" hint={`Money moved into a ${names.saving} account counts as a savings contribution.`}>
               {(p) => (
                 <select {...p} className="input" value={form.bucketTagId} onChange={(e) => setForm({ ...form, bucketTagId: e.target.value })}>
                   <option value="">None</option>

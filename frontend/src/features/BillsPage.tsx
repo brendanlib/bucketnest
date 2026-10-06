@@ -12,9 +12,11 @@ import { RecurringForm } from './RecurringForm';
 import { OccurrenceActions, OccurrenceStatusBadge } from './OccurrenceActions';
 import { describeFrequency } from './RecurringPage';
 import { TableWrap } from '../components/TableWrap';
+import { useBucketNames, withBucketNames } from '../lib/bucketNames';
 
 /** Bills-bucket schedules: next due, amount, and what's paid this budget period (spec §9). */
 export function BillsPage() {
+  const names = useBucketNames();
   const { locale } = useHousehold();
   const dashboard = useDashboard();
   const schedules = useRecurring();
@@ -55,7 +57,7 @@ export function BillsPage() {
     <>
       <PageHeader
         title="Bills"
-        subtitle={`Regular Bills-bucket costs. This period: ${formatPeriod(dashboard.data.period.start, dashboard.data.period.end, locale)}.`}
+        subtitle={`Regular ${names.bills}-bucket costs. This period: ${formatPeriod(dashboard.data.period.start, dashboard.data.period.end, locale)}.`}
         actions={
           <button type="button" className="btn primary" onClick={() => setEditing('new')}>
             <Icon name="plus" /> Add bill
