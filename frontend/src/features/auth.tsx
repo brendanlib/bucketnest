@@ -6,8 +6,9 @@ import { keys, useRegistration } from '../api/hooks';
 import type { Me } from '../api/types';
 import { Field } from '../components/Field';
 import { FormError } from '../components/States';
+import { pendingInvite } from '../lib/invite';
 
-function AuthCard({ title, children }: { title: string; children: React.ReactNode }) {
+export function AuthCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="auth-wrap">
       <div className="card auth-card">
@@ -22,7 +23,7 @@ function AuthCard({ title, children }: { title: string; children: React.ReactNod
   );
 }
 
-function fieldError(error: unknown, field: string) {
+export function fieldError(error: unknown, field: string) {
   return error instanceof ApiError && error.field === field ? error.message : null;
 }
 
@@ -42,7 +43,7 @@ export function LoginPage() {
     try {
       const me = await api.post<Me>('/auth/login', { email, password });
       qc.setQueryData(keys.me, me);
-      navigate('/');
+      navigate(pendingInvite() ? '/invite' : '/');
     } catch (err) {
       setError(err);
     } finally {
@@ -99,7 +100,7 @@ export function RegisterPage() {
   if (registration.data && !registration.data.open) {
     return (
       <AuthCard title="Registration is closed">
-        <p className="muted">This server is not accepting new accounts. Ask the household owner for access.</p>
+        <p className="muted">This server is not accepting new accounts. To join someone’s household, ask them for an invite link and open it.</p>
         <p style={{ marginTop: '1rem' }}>
           <Link to="/login">Back to log in</Link>
         </p>

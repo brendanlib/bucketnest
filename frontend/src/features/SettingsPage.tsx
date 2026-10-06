@@ -2,8 +2,8 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import { keys, useApiMutation, useBuckets, useNotificationSettings, useSessions, useSettings } from '../api/hooks';
-import type { NotificationSetting } from '../api/types';
+import { keys, useApiMutation, useBuckets, useMembers, useNotificationSettings, useSessions, useSettings } from '../api/hooks';
+import type { HouseholdMembers, NotificationSetting } from '../api/types';
 import { ConfirmDialog } from '../components/Modal';
 import { TabList, tabPanelProps } from '../components/Tabs';
 import type { Settings } from '../api/types';
@@ -261,7 +261,8 @@ function HouseholdSettings({ settings }: { settings: Settings }) {
   const { save, isPending } = useSaveSettings();
   const [name, setName] = useState(settings.name);
   return (
-    <Card title="Household" description="Members and invites come in a later release.">
+    <>
+    <Card title="Household">
       <form
         className="stack"
         onSubmit={(e) => {
@@ -277,6 +278,207 @@ function HouseholdSettings({ settings }: { settings: Settings }) {
         </div>
       </form>
     </Card>
+    <MembersCard />
+    </>
+  );
+}
+
+type Member = HouseholdMembers['members'][number];
+
+/** Who shares this household, invites for new people, and (for the owner) managing members. */
+function MembersCard() {
+  const members = useMembers();
+  const { me, locale, timezone } = useHousehold();
+  const toast = useToast();
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [created, setCreated] = useState<{ link: string; emailed: boolean; expiresAt: string; email: string | null } | null>(null);
+  const [inviteError, setInviteError] = useState<unknown>(null);
+  const [confirm, setConfirm] = useState<{ kind: 'remove' | 'owner'; member: Member } | 'leave' | null>(null);
+  const [busy, setBusy] = useState(false);
+  const createInvite = useApiMutation((email: string | null) => api.post<{ link: string; emailed: boolean; expiresAt: string }>('/household/invites', { email }), [['members']]);
+  const revoke = useApiMutation((id: string) => api.delete(`/household/invites/${id}`), [['members']]);
+
+  if (members.isPending) return <Loading />;
+  if (members.isError) return <ErrorState error={members.error} onRetry={() => members.refetch()} />;
+  const { canManage, invites } = members.data;
+  const householdName = me?.household.name ?? 'this household';
+  const onlyHousehold = (me?.households.length ?? 1) <= 1;
+
+  async function afterLeaving(accountDeleted: boolean) {
+    qc.clear();
+    navigate(accountDeleted ? '/login' : '/dashboard', { replace: true });
+  }
+
+  async function runConfirmed() {
+    if (!confirm) return;
+    setBusy(true);
+    try {
+      if (confirm === 'leave') {
+        const r = await api.post<{ accountDeleted: boolean }>('/household/leave');
+        await afterLeaving(r.accountDeleted);
+        return;
+      }
+      if (confirm.kind === 'remove') {
+        await api.delete(`/household/members/${confirm.member.userId}`);
+        toast(`${confirm.member.name} was removed`);
+      } else {
+        await api.post(`/household/members/${confirm.member.userId}/make-owner`);
+        toast(`${confirm.member.name} is now the owner`);
+        await qc.invalidateQueries({ queryKey: keys.me });
+      }
+      await qc.invalidateQueries({ queryKey: ['members'] });
+      setConfirm(null);
+    } catch (err) {
+      toast(errorMessage(err), 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <Card title="Members" description="Everyone here sees and edits the same budget. Only the owner can invite or remove people, or delete the household.">
+        <div>
+          {members.data.members.map((m) => (
+            <div key={m.userId} className="list-item" style={{ flexWrap: 'wrap' }}>
+              <div className="grow">
+                <strong>{m.name}</strong> {m.isYou ? <span className="muted small">(you)</span> : null}
+                <div className="muted small">
+                  {m.email} · joined {formatDateTime(m.joinedAt, locale, timezone)}
+                </div>
+              </div>
+              <span className={`badge${m.role === 'OWNER' ? ' ok' : ''}`}>{m.role === 'OWNER' ? 'Owner' : 'Member'}</span>
+              {canManage && !m.isYou ? (
+                <>
+                  <button type="button" className="btn small" onClick={() => setConfirm({ kind: 'owner', member: m })}>
+                    Make owner
+                  </button>
+                  <button type="button" className="btn small danger" onClick={() => setConfirm({ kind: 'remove', member: m })}>
+                    Remove
+                  </button>
+                </>
+              ) : null}
+              {!canManage && m.isYou ? (
+                <button type="button" className="btn small danger" onClick={() => setConfirm('leave')}>
+                  Leave household
+                </button>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {canManage ? (
+        <Card title="Invite someone" description="Creates a link that lets one person join this household. It works once and expires after 7 days.">
+          <form
+            className="stack"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setInviteError(null);
+              try {
+                const email = inviteEmail.trim() || null;
+                const r = await createInvite.mutateAsync(email);
+                setCreated({ ...r, email });
+                setInviteEmail('');
+              } catch (err) {
+                setInviteError(err);
+              }
+            }}
+          >
+            <FormError error={inviteError} />
+            <Field label="Their email (optional)" hint="If you add it, only that address can use the link — and it’s emailed to them when email is set up on this server.">
+              {(p) => <input {...p} className="input" type="email" autoComplete="off" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />}
+            </Field>
+            <div className="form-actions">
+              <button type="submit" className="btn primary" disabled={createInvite.isPending}>
+                Create invite link
+              </button>
+            </div>
+          </form>
+          {created ? (
+            <div className="tip" role="status" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+              <strong>{created.emailed ? `Invite emailed to ${created.email}` : 'Invite link ready'}</strong>
+              <p className="small">
+                {created.emailed ? 'You can also send them this link yourself.' : 'Send this link to the person you’re inviting, by message or email.'} It works once, expires on{' '}
+                {formatDateTime(created.expiresAt, locale, timezone)}, and won’t be shown again.
+              </p>
+              <div className="row" style={{ gap: '0.5rem' }}>
+                <input className="input grow" readOnly value={created.link} aria-label="Invite link" onFocus={(e) => e.target.select()} />
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(created.link);
+                      toast('Link copied');
+                    } catch {
+                      toast('Select the link and copy it', 'error');
+                    }
+                  }}
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+          ) : null}
+          {invites.length ? (
+            <div>
+              <span className="field-label">Open invites</span>
+              {invites.map((i) => (
+                <div key={i.id} className="list-item">
+                  <div className="grow">
+                    <div>{i.email ?? 'Anyone with the link'}</div>
+                    <div className="muted small">
+                      {i.invitedBy ? `by ${i.invitedBy} · ` : ''}expires {formatDateTime(i.expiresAt, locale, timezone)}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn small"
+                    onClick={async () => {
+                      await revoke.mutateAsync(i.id);
+                      toast('Invite revoked');
+                    }}
+                  >
+                    Revoke
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </Card>
+      ) : null}
+
+      {confirm ? (
+        <ConfirmDialog
+          busy={busy}
+          onCancel={() => setConfirm(null)}
+          onConfirm={runConfirmed}
+          {...(confirm === 'leave'
+            ? {
+                title: `Leave ${householdName}?`,
+                confirmLabel: 'Leave',
+                message: onlyHousehold
+                  ? 'This is your only household, so your login will be deleted too. The household and its data stay with the other members.'
+                  : 'You’ll lose access to this household’s budget. Its data stays with the other members.',
+              }
+            : confirm.kind === 'remove'
+              ? {
+                  title: `Remove ${confirm.member.name}?`,
+                  confirmLabel: 'Remove',
+                  message: `${confirm.member.name} will lose access to this household straight away. If it’s their only household, their login is deleted too. The household’s data isn’t changed.`,
+                }
+              : {
+                  title: `Make ${confirm.member.name} the owner?`,
+                  confirmLabel: 'Make owner',
+                  danger: false,
+                  message: `${confirm.member.name} will be able to invite and remove people and delete the household. You’ll become a member.`,
+                })}
+        />
+      ) : null}
+    </>
   );
 }
 

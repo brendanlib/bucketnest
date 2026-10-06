@@ -7,6 +7,7 @@ import { useHousehold } from '../lib/household';
 import { getSidebarCollapsed, setSidebarCollapsed } from '../lib/theme';
 import { Modal } from './Modal';
 import { NotificationBell } from './NotificationBell';
+import { HouseholdSwitcher } from './HouseholdSwitcher';
 
 interface NavItem {
   to: string;
@@ -115,7 +116,7 @@ export function Layout() {
 
       <div className="main">
         <header className="topbar">
-          <strong className="truncate">{me?.household.name}</strong>
+          <HouseholdSwitcher />
           <span className="spacer" />
           <NotificationBell />
           <span className="muted small truncate">{me?.user.name}</span>

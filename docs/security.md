@@ -9,10 +9,12 @@ Reviewed in Phase 6 against the code, the nginx configuration and the Compose se
 - Only the owner can delete the household, and must also enter the household name and their password.
 - API tests cover isolation for every resource type.
 
+- Household roles: only the **owner** can invite, remove members, hand over ownership or delete the household. Members can use every budget feature and can leave.
+
 ## A02 Cryptographic failures
 
 - Passwords: Argon2id.
-- Session and reset tokens: 256-bit random. Only an HMAC-SHA256 (keyed with `SESSION_SECRET`) is stored, so a database leak yields no usable tokens.
+- Session, reset and invite tokens: 256-bit random. Only an HMAC-SHA256 (keyed with `SESSION_SECRET`) is stored, so a database leak yields no usable tokens.
 - Cookies: `HttpOnly`, `Secure` and `SameSite`, with the `__Host-` prefix over HTTPS. HSTS is sent by the backend, and by Caddy in the deployment guide.
 - **Fixed:** API responses now send `Cache-Control: no-store`, so financial data isn't kept by browsers or proxies, for example on a shared computer.
 
@@ -59,6 +61,12 @@ Reviewed in Phase 6 against the code, the nginx configuration and the Compose se
 - Passwords need 12+ characters, are checked against a list of common passwords, and can't be the user's email address.
 - Login takes the same time whether or not the email exists: unknown emails are checked against a dummy hash.
 - **Fixed:** "forgot password" sent its email before replying, so the response time showed whether an account existed. The email is now sent after the response.
+
+- **Invites:**
+  - The link carries its token after `#`, which browsers never send to the server, so it can't appear in server logs or a `Referer` header. The page removes it from the address bar once read.
+  - Lookups and accepts send the token in a POST body, under the login rate limit.
+  - Each invite works once (claimed atomically together with the new membership) and expires after 7 days.
+  - An invite can be tied to one email address. Joining with any other address is refused.
 
 ## A08 Software and data integrity failures
 

@@ -26,7 +26,7 @@ export function buildJobs(app: FastifyInstance): Job[] {
       everyMs: 60 * 60_000,
       run: async () => {
         app.authThrottle.prune();
-        return app.services.auth.cleanup();
+        return { ...(await app.services.auth.cleanup()), ...(await app.services.members.cleanup()) };
       },
     },
   ];

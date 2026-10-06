@@ -194,12 +194,40 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  sessions     Session[]
-  resetTokens  PasswordResetToken[]
-  memberships  HouseholdMember[]
-  transactions Transaction[]
+  /// The household this user last switched to; new sessions open it.
+  lastHouseholdId String? @map("last_household_id") @db.Uuid
+
+  sessions        Session[]
+  resetTokens     PasswordResetToken[]
+  memberships     HouseholdMember[]
+  transactions    Transaction[]
+  lastHousehold   Household?        @relation("LastHousehold", fields: [lastHouseholdId], references: [id], onDelete: SetNull)
+  invitesSent     HouseholdInvite[] @relation("InvitesSent")
+  invitesAccepted HouseholdInvite[] @relation("InvitesAccepted")
 
   @@map("users")
+}
+
+/// A single-use link that lets someone join a household as a member.
+model HouseholdInvite {
+  id           String    @id @default(uuid()) @db.Uuid
+  householdId  String    @map("household_id") @db.Uuid
+  /// HMAC-SHA256 of the token in the link. The raw token is never stored.
+  tokenHash    String    @unique @map("token_hash")
+  /// When set, only this email can use the invite (stored lower-cased).
+  email        String?
+  invitedById  String?   @map("invited_by_id") @db.Uuid
+  expiresAt    DateTime  @map("expires_at") @db.Timestamptz(3)
+  acceptedAt   DateTime? @map("accepted_at") @db.Timestamptz(3)
+  acceptedById String?   @map("accepted_by_id") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  household  Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  invitedBy  User?     @relation("InvitesSent", fields: [invitedById], references: [id], onDelete: SetNull)
+  acceptedBy User?     @relation("InvitesAccepted", fields: [acceptedById], references: [id], onDelete: SetNull)
+
+  @@index([householdId])
+  @@map("household_invites")
 }
 
 model Session {
@@ -210,10 +238,13 @@ model Session {
   expiresAt  DateTime @map("expires_at") @db.Timestamptz(3)
   lastSeenAt DateTime @default(now()) @map("last_seen_at") @db.Timestamptz(3)
   userAgent  String?  @map("user_agent")
+  /// The household this session is working in (null: the user's default).
+  householdId String? @map("household_id") @db.Uuid
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  household Household? @relation(fields: [householdId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([expiresAt])
@@ -258,6 +289,9 @@ model Household {
   updatedAt          DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   members                  HouseholdMember[]
+  invites                  HouseholdInvite[]
+  sessions                 Session[]
+  lastUsedBy               User[]             @relation("LastHousehold")
   buckets                  Bucket[]
   categories               Category[]
   accounts                 Account[]

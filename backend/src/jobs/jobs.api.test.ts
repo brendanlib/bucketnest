@@ -39,7 +39,7 @@ describe('scheduled jobs', () => {
     await registerUser(app);
     clock.advance(40 * 86_400_000);
     const cleanup = buildJobs(app).find((j) => j.name === 'session-cleanup')!;
-    expect(await cleanup.run()).toEqual({ sessions: 1, tokens: 0 });
+    expect(await cleanup.run()).toEqual({ sessions: 1, tokens: 0, invites: 0 });
     expect(await testDb().session.count()).toBe(0);
   });
 });

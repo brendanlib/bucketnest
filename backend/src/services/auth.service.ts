@@ -21,7 +21,7 @@ export function createAuthService(deps: Deps) {
   const tokenHash = (token: string) => hmac(config.sessionSecret, 'session', token);
   const resetHash = (token: string) => hmac(config.sessionSecret, 'reset', token);
 
-  async function issueSession(userId: string, userAgent: string | null): Promise<IssuedSession> {
+  async function issueSession(userId: string, userAgent: string | null, householdId: string | null = null): Promise<IssuedSession> {
     const token = randomToken(32);
     const now = deps.now();
     const expiresAt = new Date(now.getTime() + Math.min(config.sessionIdleMs, config.sessionAbsoluteMs));
@@ -30,6 +30,7 @@ export function createAuthService(deps: Deps) {
       userId,
       expiresAt,
       userAgent: userAgent?.slice(0, 300) ?? null,
+      householdId,
       // Timestamps come from the app clock so timeouts are measured consistently.
       createdAt: now,
       lastSeenAt: now,
@@ -49,6 +50,32 @@ export function createAuthService(deps: Deps) {
 
   return {
     registrationOpen,
+    issueSession,
+
+    /** The membership a user works in after logging in (their last-used household). */
+    async defaultMembership(userId: string) {
+      const user = await repo.findUserById(db, userId);
+      const membership = await repo.findMembershipForUser(db, userId, user?.lastHouseholdId);
+      if (!membership) throw unauthorized();
+      return membership;
+    },
+
+    async households(userId: string) {
+      const rows = await repo.listMemberships(db, userId);
+      return rows.map((m) => ({ id: m.household.id, name: m.household.name, role: m.role }));
+    },
+
+    /** Moves this session (and the user's default for new sessions) to another of their households. */
+    async switchHousehold(userId: string, sessionId: string, householdId: string) {
+      const membership = await db.householdMember.findUnique({ where: { householdId_userId: { householdId, userId } } });
+      if (!membership) throw notFound('Household');
+      await db.$transaction([
+        db.session.update({ where: { id: sessionId }, data: { householdId } }),
+        db.user.update({ where: { id: userId }, data: { lastHouseholdId: householdId } }),
+      ]);
+      log.info({ userId, householdId }, 'switched household');
+      return membership;
+    },
 
     /** `ignoreRegistrationSwitch` is for the demo seed only; the route never passes it. */
     async register(input: { email: string; name: string; password: string; timezone?: string; userAgent: string | null }, opts: { ignoreRegistrationSwitch?: boolean } = {}) {
@@ -101,7 +128,7 @@ export function createAuthService(deps: Deps) {
         await repo.deleteSession(db, session.id);
         return null;
       }
-      const membership = await repo.findMembershipForUser(db, session.userId);
+      const membership = await repo.findMembershipForUser(db, session.userId, session.householdId ?? session.user.lastHouseholdId);
       if (!membership) return null;
       if (now.getTime() - session.lastSeenAt.getTime() > TOUCH_INTERVAL_MS) {
         const expiresAt = new Date(Math.min(now.getTime() + config.sessionIdleMs, absoluteEnd));

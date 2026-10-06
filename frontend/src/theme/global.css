@@ -372,3 +372,6 @@ a.btn { text-decoration: none; }
 @media (max-width: 600px) {
   .bell-panel { position: fixed; left: 1rem; right: 1rem; top: 3.5rem; width: auto; }
 }
+
+/* ── Household switcher ─────────────────────────────── */
+.household-switch { width: auto; max-width: min(320px, 50vw); font-weight: 650; padding-block: 0.35rem; }

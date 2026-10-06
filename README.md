@@ -2,7 +2,7 @@
 
 A self-hosted household budget app built on the Barefoot Investor bucket method: Bills, Smile, Splurge and Fire Extinguisher. It runs on your own server with `docker compose up -d` and keeps everything in PostgreSQL.
 
-> **Build status: all six phases complete.** See [Roadmap](#roadmap). One gap for households of two or more: inviting a second person into a household isn't built yet (each login has its own household).
+> **Build status: all six phases complete, plus household invites.** See [Roadmap](#roadmap).
 
 ## What works now
 
@@ -83,6 +83,11 @@ A self-hosted household budget app built on the Barefoot Investor bucket method:
 - **Your data:**
   - Settings → Data downloads everything as one JSON file, or any list (transactions, accounts, categories, budgets, schedules, funds, goals, debts, valuations, rules) as CSV. Transactions export one row per category split. Exports never include passwords or sessions.
   - The household owner can delete the household and everything in it after typing its name and their password. Members with no other household lose their login.
+- **Sharing a household:**
+  - The owner invites people from Settings → Household. Each invite is a link that works once and expires after 7 days. You can send it yourself, and it's emailed too when SMTP is set up and you enter their address.
+  - A new person creates their account from the link, even when sign-up is closed. Someone with an account logs in and joins.
+  - Everyone in a household sees and edits the same budget. Only the owner can invite, remove members, hand over ownership or delete the household. Members can leave.
+  - Belong to more than one household? Switch between them from the top of the page.
 - **Settings:** budget period, display frequency, thresholds, currency, locale, time zone, financial year, theme (light, dark or system).
 - **Demo data:** `SEED_DEMO=true` on first start (or `npm run seed:demo`) creates `demo@example.com` with a year of realistic transactions, pay, bills, sinking funds, goals, debts, assets and rules.
 - **Accessibility:** every page passes an automated WCAG 2.2 AA scan (axe) in light and dark themes. It is keyboard-operable (tabs use arrow keys), every chart has a table view, and colour is never the only signal.
@@ -102,7 +107,7 @@ nano .env              # set PUBLIC_URL to the address you'll use
 docker compose up -d --build
 ```
 
-Put HTTPS in front of port 8080 and open your `PUBLIC_URL`. The first person to register becomes the household owner, and registration then closes.
+Put HTTPS in front of port 8080 and open your `PUBLIC_URL`. The first person to register becomes the household owner, and registration then closes. Invite everyone else from **Settings → Household**.
 
 **[docs/deployment.md](docs/deployment.md) is the full step-by-step guide** for a fresh Ubuntu VM: firewall, Docker, Caddy with automatic HTTPS, backups, email and updates. It also covers Cloudflare Tunnel, Nginx Proxy Manager, Traefik and LAN-only setups.
 
@@ -205,6 +210,6 @@ docs/      deployment (Ubuntu), backup and restore, data model, security review
 5. **Automation** ✅ CSV import and categorisation rules, notifications (in-app and email), data export (JSON and CSV), household deletion.
 6. **Hardening and docs** ✅ OWASP Top 10 review with fixes ([docs/security.md](docs/security.md)), accessibility pass, 50,000-transaction performance check, demo data, Ubuntu deployment guide, CI against the real stack.
 
-Next: household invites, so two people can share one household with separate logins.
+7. **Household invites** ✅ invite links, joining with a new or existing account, members, ownership hand-over, household switcher.
 
 Out of scope for v1: bank feeds, multi-currency, public holiday calendars, native apps, live investment prices, and hosting under a subpath.

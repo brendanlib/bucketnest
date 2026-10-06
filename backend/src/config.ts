@@ -33,6 +33,8 @@ const EnvSchema = z.object({
   SEED_DEMO: boolFromEnv(),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   JOBS_ENABLED: boolFromEnv(),
+  /** Login, sign-up and invite attempts per minute per IP. Raise only for automated tests. */
+  AUTH_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(10_000).default(5),
 });
 
 export interface AppConfig {
@@ -118,6 +120,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     seedDemo: e.SEED_DEMO ?? false,
     logLevel: e.LOG_LEVEL,
     jobsEnabled: e.JOBS_ENABLED ?? e.NODE_ENV !== 'test',
-    rateLimits: { auth: 5, api: 300 },
+    rateLimits: { auth: e.AUTH_RATE_LIMIT_PER_MINUTE, api: 300 },
   };
 }

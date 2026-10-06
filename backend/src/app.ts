@@ -27,6 +27,7 @@ import { fireRoutes } from './routes/fire.js';
 import { onboardingRoutes } from './routes/onboarding.js';
 import { reportRoutes } from './routes/reports.js';
 import { notificationRoutes } from './routes/notifications.js';
+import { memberRoutes } from './routes/members.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -83,6 +84,8 @@ export async function buildApp(opts: BuildOptions): Promise<FastifyInstance> {
     async (api) => {
       await api.register(healthRoutes);
       await api.register(authRoutes(services, config, throttle));
+      // Invite lookup and sign-up work before login; the rest of this plugin requires it.
+      await api.register(memberRoutes(services, config));
       await api.register(async (protectedApi) => {
         protectedApi.addHook('onRequest', requireAuth);
         await protectedApi.register(settingsRoutes(services));

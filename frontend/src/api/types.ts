@@ -2,6 +2,7 @@ export type BucketKey = 'BILLS' | 'SMILE' | 'SPLURGE' | 'FIRE_EXTINGUISHER';
 
 export interface Me {
   user: { id: string; email: string; name: string; dismissedTips: string[] };
+  households: { id: string; name: string; role: 'OWNER' | 'MEMBER' }[];
   household: { id: string; name: string; role: 'OWNER' | 'MEMBER'; currency: string; locale: string; timezone: string };
 }
 
@@ -722,4 +723,18 @@ export interface NotificationSetting {
   enabled: boolean;
   daysBefore: number | null;
   emailEnabled: boolean;
+}
+
+export interface HouseholdMembers {
+  members: { userId: string; name: string; email: string; role: 'OWNER' | 'MEMBER'; joinedAt: string; isYou: boolean }[];
+  invites: { id: string; email: string | null; invitedBy: string | null; createdAt: string; expiresAt: string }[];
+  canManage: boolean;
+}
+
+export interface InviteInfo {
+  householdName: string;
+  invitedBy: string | null;
+  email: string | null;
+  expiresAt: string;
+  hasAccount: boolean | null;
 }

@@ -24,6 +24,7 @@ import { DebtsPage, DebtDetailPage } from './features/DebtsPage';
 import { ReportsPage } from './features/ReportsPage';
 import { NetWorthPage } from './features/NetWorthPage';
 import { CalendarPage } from './features/CalendarPage';
+import { InvitePage } from './features/InvitePage';
 
 function RequireAuth() {
   const me = useMe();
@@ -46,7 +47,7 @@ export function App() {
   useEffect(() => {
     setUnauthenticatedHandler(() => {
       qc.removeQueries({ queryKey: keys.me });
-      if (!['/login', '/register', '/forgot-password', '/reset-password'].includes(window.location.pathname)) navigate('/login');
+      if (!['/login', '/register', '/forgot-password', '/reset-password', '/invite'].includes(window.location.pathname)) navigate('/login');
     });
   }, [qc, navigate]);
 
@@ -56,6 +57,7 @@ export function App() {
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/invite" element={<InvitePage />} />
       <Route element={<RequireAuth />}>
         <Route element={<Layout />}>
           <Route index element={<Navigate to="/dashboard" replace />} />

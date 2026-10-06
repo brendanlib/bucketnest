@@ -234,3 +234,12 @@ Each schedule's occurrences (posted ones link to their transaction), sinking fun
 - **JSON:** `GET /api/export?format=json` returns `{ format: "home-budget-export", version: 1, … }` with every record in the household. Money is in integer cents. Password hashes, sessions and reset tokens are never included.
 - **CSV:** `GET /api/export?format=csv&entity=…` for transactions (one row per split), accounts, categories, budget, recurring, sinking-funds, goals, debts, assets and rules. These use the same CSV rules as reports.
 - **Deleting a household:** owner only. The owner must type the household name exactly and enter their password. Everything in the household is deleted (cascade). Users left with no household membership are deleted too.
+
+## Households, members and invites
+
+- A user can belong to several households (`household_members`, unique per household and user), as **OWNER** or **MEMBER**. Each household has exactly one owner; ownership can be handed over.
+- **Which household a request uses:** the session's `household_id`, if the user still belongs to it. Otherwise their `last_household_id`, then the household they own, then the oldest membership. Switching sets both the session's household and the user's last household, so new logins open where they left off.
+- **Invites (`household_invites`):** an HMAC of the token, an optional email, expiry 7 days after creation, then `accepted_at` / `accepted_by_id` once used.
+  - Accepting marks the invite used, only if it's unused and unexpired, and adds the membership in the same transaction.
+  - Invites still unused 30 days after expiry are deleted by the cleanup job.
+- **Removing or leaving:** the membership is deleted, and sessions working in that household fall back to the user's default. A user left with no household is deleted, as when a household is deleted.

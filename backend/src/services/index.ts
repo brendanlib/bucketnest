@@ -18,6 +18,7 @@ import { createNetWorthService } from './networth.service.js';
 import { createReportService } from './report.service.js';
 import { createNotificationService } from './notification.service.js';
 import { createDataService } from './data.service.js';
+import { createMemberService } from './member.service.js';
 
 export function createServices(deps: Deps) {
   const transactions = createTransactionService(deps);
@@ -31,7 +32,9 @@ export function createServices(deps: Deps) {
   const netWorth = createNetWorthService(deps, accounts);
   const recurring = createRecurringService(deps, transactions);
   const rules = createRuleService(deps, transactions);
+  const auth = createAuthService(deps);
   return {
+    members: createMemberService(deps, auth),
     notifications: createNotificationService(deps, { recurring, budgets, sinkingFunds, goals }),
     data: createDataService(deps, accounts),
     netWorth,
@@ -42,7 +45,7 @@ export function createServices(deps: Deps) {
     debts,
     rules,
     imports: createImportService(deps, { transactions, recurring, rules }),
-    auth: createAuthService(deps),
+    auth,
     settings: createSettingsService(deps),
     buckets: createBucketService(deps),
     categories: createCategoryService(deps),

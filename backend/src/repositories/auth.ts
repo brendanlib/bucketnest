@@ -16,7 +16,7 @@ export const updatePasswordHash = (db: DbTx, userId: string, passwordHash: strin
 
 export const createSession = (
   db: DbTx,
-  data: { tokenHash: string; userId: string; expiresAt: Date; userAgent: string | null; createdAt: Date; lastSeenAt: Date },
+  data: { tokenHash: string; userId: string; expiresAt: Date; userAgent: string | null; createdAt: Date; lastSeenAt: Date; householdId?: string | null },
 ) =>
   db.session.create({ data });
 
@@ -53,9 +53,24 @@ export const deleteUserResetTokens = (db: DbTx, userId: string) => db.passwordRe
 export const deleteExpiredResetTokens = (db: DbTx, now: Date) =>
   db.passwordResetToken.deleteMany({ where: { OR: [{ expiresAt: { lte: now } }, { usedAt: { not: null } }] } });
 
-export const findMembershipForUser = (db: DbTx, userId: string) =>
-  db.householdMember.findFirst({
+/**
+ * The membership a request works in: the preferred household if the user still
+ * belongs to it, otherwise their own (owned) household, then the oldest.
+ */
+export async function findMembershipForUser(db: DbTx, userId: string, preferredHouseholdId?: string | null) {
+  if (preferredHouseholdId) {
+    const preferred = await db.householdMember.findUnique({
+      where: { householdId_userId: { householdId: preferredHouseholdId, userId } },
+      include: { household: true },
+    });
+    if (preferred) return preferred;
+  }
+  return db.householdMember.findFirst({
     where: { userId },
     orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
     include: { household: true },
   });
+}
+
+export const listMemberships = (db: DbTx, userId: string) =>
+  db.householdMember.findMany({ where: { userId }, orderBy: [{ role: 'asc' }, { createdAt: 'asc' }], include: { household: { select: { id: true, name: true } } } });

@@ -7,12 +7,15 @@ import { AttemptThrottle } from '../lib/throttle.js';
 import { tooManyRequests } from '../lib/errors.js';
 import { MAX_PASSWORD_LENGTH } from '../lib/password.js';
 import { Id } from '../lib/schemas.js';
+import type { Db } from '../db.js';
 
 const Email = z.email('Enter a valid email address').max(254).transform((v) => v.trim().toLowerCase());
 const Password = z.string().min(1, 'Enter a password').max(MAX_PASSWORD_LENGTH);
 
-const MeResponse = z.object({
+export const MeResponse = z.object({
   user: z.object({ id: z.string(), email: z.string(), name: z.string(), dismissedTips: z.array(z.string()) }),
+  /** Every household this user belongs to, for the switcher. */
+  households: z.array(z.object({ id: z.string(), name: z.string(), role: z.enum(['OWNER', 'MEMBER']) })),
   household: z.object({
     id: z.string(),
     name: z.string(),
@@ -22,6 +25,27 @@ const MeResponse = z.object({
     timezone: z.string(),
   }),
 });
+
+/** The /auth/me body: the user, their current household and every household they can switch to. */
+export async function buildMe(db: Db, services: Services, userId: string, householdId: string, role: 'OWNER' | 'MEMBER') {
+  const [settings, user, households] = await Promise.all([
+    services.settings.get(householdId),
+    db.user.findUniqueOrThrow({ where: { id: userId } }),
+    services.auth.households(userId),
+  ]);
+  return {
+    user: { id: user.id, email: user.email, name: user.name, dismissedTips: user.dismissedTips },
+    households,
+    household: {
+      id: settings.id,
+      name: settings.name,
+      role,
+      currency: settings.currency,
+      locale: settings.locale,
+      timezone: settings.timezone,
+    },
+  };
+}
 
 export const authRoutes =
   (services: Services, config: AppConfig, throttle: AttemptThrottle): FastifyPluginAsyncZod =>
@@ -34,23 +58,7 @@ export const authRoutes =
       if (wait !== null) throw tooManyRequests(wait);
     };
 
-    async function me(userId: string, householdId: string, role: 'OWNER' | 'MEMBER') {
-      const [settings, user] = await Promise.all([
-        services.settings.get(householdId),
-        app.deps.db.user.findUniqueOrThrow({ where: { id: userId } }),
-      ]);
-      return {
-        user: { id: user.id, email: user.email, name: user.name, dismissedTips: user.dismissedTips },
-        household: {
-          id: settings.id,
-          name: settings.name,
-          role,
-          currency: settings.currency,
-          locale: settings.locale,
-          timezone: settings.timezone,
-        },
-      };
-    }
+    const me = (userId: string, householdId: string, role: 'OWNER' | 'MEMBER') => buildMe(app.deps.db, services, userId, householdId, role);
 
     app.get('/auth/csrf', { schema: { tags: ['auth'], response: { 200: z.object({ csrfToken: z.string() }) } } }, async (request, reply) => {
       return { csrfToken: issueCsrf(request, reply, config) };
@@ -107,7 +115,7 @@ export const authRoutes =
           });
           throttle.succeed(key);
           setSessionCookie(reply, config, session);
-          const membership = await app.deps.db.householdMember.findFirstOrThrow({ where: { userId: user.id }, orderBy: { role: 'asc' } });
+          const membership = await services.auth.defaultMembership(user.id);
           return me(user.id, membership.householdId, membership.role);
         } catch (err) {
           throttle.fail(key);
@@ -159,6 +167,16 @@ export const authRoutes =
         const a = authOf(request);
         return me(a.userId, a.householdId, a.role);
       });
+
+      r.post(
+        '/auth/switch-household',
+        { schema: { tags: ['auth'], description: 'Work in another household you belong to.', body: z.strictObject({ householdId: Id }), response: { 200: MeResponse } } },
+        async (request) => {
+          const a = authOf(request);
+          const m = await services.auth.switchHousehold(a.userId, a.sessionId, request.body.householdId);
+          return me(a.userId, m.householdId, m.role);
+        },
+      );
 
       r.post(
         '/auth/change-password',
