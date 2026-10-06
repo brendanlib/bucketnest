@@ -41,6 +41,9 @@ export function BudgetTable({
   onEditLine?: (line: BudgetLine, item: BudgetItem | undefined) => void;
 }) {
   const items = new Map(summary.budget.items.map((i) => [i.categoryId, i]));
+  // Notes are optional; the column only takes room when there's something in it.
+  const hasNotes = summary.budget.items.some((i) => i.notes);
+  const cols = hasNotes ? 6 : 5;
   const buckets = summary.buckets.filter((b) => !bucketKey || b.key === bucketKey);
 
   return (
@@ -54,7 +57,7 @@ export function BudgetTable({
               <th className="right">Actual</th>
               <th className="right">Remaining</th>
               <th>Used</th>
-              <th>Notes</th>
+              {hasNotes ? <th>Notes</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -77,11 +80,11 @@ export function BudgetTable({
                     </div>
                   </td>
                   <Cells v={b} label={`${b.name} total used`} />
-                  <td />
+                  {hasNotes ? <td /> : null}
                 </tr>
                 {b.groups.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="muted small" style={{ paddingLeft: '1.5rem' }}>
+                    <td colSpan={cols} className="muted small" style={{ paddingLeft: '1.5rem' }}>
                       Nothing planned or spent yet.
                     </td>
                   </tr>
@@ -92,7 +95,7 @@ export function BudgetTable({
                       <tr className="group-row">
                         <td>{g.name}</td>
                         <Cells v={g} label={`${g.name} used`} />
-                        <td />
+                        {hasNotes ? <td /> : null}
                       </tr>
                     ) : null}
                     {g.lines.map((l) => {
@@ -113,11 +116,13 @@ export function BudgetTable({
                             )}
                           </td>
                           <Cells v={l} label={`${l.name} used`} />
-                          <td className="small muted" style={{ maxWidth: 220 }}>
-                            <span className="truncate" style={{ display: 'block' }}>
-                              {item?.notes ?? ''}
-                            </span>
-                          </td>
+                          {hasNotes ? (
+                            <td className="small muted" style={{ maxWidth: 220 }}>
+                              <span className="truncate" style={{ display: 'block' }}>
+                                {item?.notes ?? ''}
+                              </span>
+                            </td>
+                          ) : null}
                         </tr>
                       );
                     })}
@@ -129,7 +134,7 @@ export function BudgetTable({
               <tr className="total-row">
                 <td>Total</td>
                 <Cells v={summary.total} label="Total used" />
-                <td />
+                {hasNotes ? <td /> : null}
               </tr>
             ) : null}
           </tbody>

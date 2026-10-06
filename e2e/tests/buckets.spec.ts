@@ -29,6 +29,14 @@ test('rename, add and remove buckets', async ({ page }, testInfo) => {
   await page.getByRole('button', { name: 'Save buckets' }).click();
   await expect(page.getByText('Buckets saved')).toBeVisible();
 
+  // The budget table's bucket rows stay table rows (a class clash once made them grids).
+  if (testInfo.project.name === 'desktop') {
+    await page.goto('/budget');
+    const row = page.locator('.budget-table tr.bucket-row').first();
+    await expect(row).toContainText('Bills');
+    expect(await row.evaluate((el) => getComputedStyle(el).display)).toBe('table-row');
+  }
+
   await page.goto('/dashboard');
   await expect(page.getByRole('article', { name: 'Kids' })).toBeVisible();
   await expect(page.getByRole('article', { name: 'Savings' })).toBeVisible();

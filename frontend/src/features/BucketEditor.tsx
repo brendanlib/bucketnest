@@ -67,15 +67,15 @@ export function BucketEditor({
           if (ok) onSave(rows.map((r) => ({ id: r.id, name: r.name.trim(), percentage: r.percentage.trim() })));
         }}
       >
-        <ol className="bucket-rows">
+        <ol className="bucket-edit-rows">
           {rows.map((r, i) => (
-            <li key={r.id} className="bucket-row">
+            <li key={r.id} className="bucket-edit-row">
               <span className="dot" style={{ background: bucketColour(r.colour) }} aria-hidden="true" />
-              <div className="bucket-name stack-xs">
+              <div className="bucket-edit-name stack-xs">
                 <input className="input" aria-label={`Name of bucket ${i + 1}`} value={r.name} maxLength={60} onChange={(e) => set(i, { name: e.target.value })} />
                 {ROLE_NOTE[r.role] ? <span className="muted small">{ROLE_NOTE[r.role]}</span> : null}
               </div>
-              <div className="input-group bucket-pct">
+              <div className="input-group bucket-edit-pct">
                 <input
                   className="input right"
                   inputMode="decimal"
