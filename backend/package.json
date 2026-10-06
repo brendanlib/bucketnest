@@ -19,7 +19,8 @@
     "reset-password": "node dist/cli/reset-password.js",
     "prisma:migrate:dev": "prisma migrate deploy",
     "seed:demo": "node dist/cli/seed-demo.js",
-    "perf-check": "node dist/cli/perf-check.js"
+    "perf-check": "node dist/cli/perf-check.js",
+    "disable-mfa": "node dist/cli/disable-mfa.js"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.2",

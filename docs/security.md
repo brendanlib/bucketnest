@@ -60,6 +60,14 @@ Reviewed in Phase 6 against the code, the nginx configuration and the Compose se
 - A login always issues a new session; changing the password signs out every other device.
 - Passwords need 12+ characters, are checked against a list of common passwords, and can't be the user's email address.
 - Login takes the same time whether or not the email exists: unknown emails are checked against a dummy hash.
+- **Two-step sign-in (TOTP, RFC 6238), optional per user:**
+  - After the password, a login gets a signed 5-minute challenge, not a session. The session is issued only when the code checks out.
+  - Codes are SHA-1, 30 seconds and 6 digits, with ±1 step for clock drift. Each step is claimed atomically, so a code can't be used twice.
+  - Wrong codes are limited per user with backoff, on top of the per-IP limit.
+  - The secret is encrypted with AES-256-GCM. The 10 recovery codes are stored as HMACs and each works once.
+  - Turning it on needs the password and a code, and signs out other devices. Turning it off or replacing recovery codes needs the password and a code.
+  - A password reset by email does **not** remove it. Only the server admin can, with `npm run disable-mfa`.
+  - With SMTP set up, the user is emailed when it's turned on or off and when a recovery code is used.
 - **Fixed:** "forgot password" sent its email before replying, so the response time showed whether an account existed. The email is now sent after the response.
 
 - **Invites:**
@@ -97,7 +105,7 @@ Reviewed in Phase 6 against the code, the nginx configuration and the Compose se
 - **CSP allows inline styles** (`style-src 'unsafe-inline'`), because React sets style attributes. Scripts remain `'self'` only.
 - **Rate-limit counters are in memory.** They reset when the backend restarts and aren't shared between replicas (the app runs one).
 - **Registration says "an account with this email already exists"** while sign-up is open, which is normally only until the first user registers.
-- **No two-factor authentication** in v1. For an internet-facing install, Cloudflare Access (or a VPN such as Tailscale) adds a second layer.
+- **Two-step sign-in is optional**, not enforced per household. Each person turns it on for themselves.
 
 ## Re-running the checks
 

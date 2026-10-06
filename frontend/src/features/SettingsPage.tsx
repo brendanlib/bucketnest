@@ -18,6 +18,7 @@ import { getThemePref, setThemePref, type ThemePref } from '../lib/theme';
 import { strings } from '../locales/en-AU';
 import { BucketEditor } from './BucketEditor';
 import { BankFeedsSettings } from './BankFeedsSettings';
+import { TwoStepSettings } from './TwoStepSettings';
 
 const SECTIONS = ['Budget', 'Localisation', 'Notifications', 'Household', 'Bank feeds', 'Security', 'Data', 'Appearance'] as const;
 type Section = (typeof SECTIONS)[number];
@@ -515,6 +516,7 @@ function SecuritySettings() {
 
   return (
     <>
+      <TwoStepSettings />
       <Card title="Change password" description="Changing your password signs out every other device.">
         <form
           className="stack"

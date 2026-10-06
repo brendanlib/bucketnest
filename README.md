@@ -23,6 +23,7 @@ A self-hosted household budget app built on the Barefoot Investor bucket method:
   - Categories: rename, reorder, move, disable or delete them (deleting one with history reassigns it).
 - **Security:**
   - Argon2id passwords and server-side sessions in HTTP-only cookies, revocable instantly.
+  - Optional two-step sign-in with any authenticator app (TOTP), with 10 single-use recovery codes.
   - CSRF tokens, Origin checks, per-IP and per-email rate limits with backoff.
   - A registration switch, strict security headers, and full household isolation.
 - **Dashboard:** one view of the current budget period, stepping back or forward through periods. It shows:
@@ -136,6 +137,7 @@ git pull && docker compose up -d --build   # update; migrations run on start
 ./scripts/backup.sh                        # back up the database
 ./scripts/restore.sh backups/<file>.dump   # restore a backup
 docker compose exec backend npm run reset-password -- you@example.com
+docker compose exec backend npm run disable-mfa -- you@example.com   # lost phone and recovery codes
 ```
 
 > ⚠️ **`docker compose down -v` deletes the database volume and every record in it.** Never add `-v` unless you mean to wipe everything. Take a backup first.
@@ -152,6 +154,12 @@ docker compose exec backend npm run reset-password -- you@example.com
 ```
 
 That prints a temporary password and signs the user out everywhere. Change it afterwards in **Settings → Security**.
+
+A password reset doesn't turn off two-step sign-in. Someone who has lost both their phone and their recovery codes needs the person who runs the server to remove it:
+
+```bash
+docker compose exec backend npm run disable-mfa -- you@example.com
+```
 
 ## Backups
 

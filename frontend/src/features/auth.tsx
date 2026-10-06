@@ -32,23 +32,45 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
+  /** Set once the password is accepted and a two-step code is needed. */
+  const [challenge, setChallenge] = useState<string | null>(null);
   const qc = useQueryClient();
   const navigate = useNavigate();
   const registration = useRegistration();
+
+  function signedIn(me: Me) {
+    qc.setQueryData(keys.me, me);
+    navigate(pendingInvite() ? '/invite' : '/');
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      const me = await api.post<Me>('/auth/login', { email, password });
-      qc.setQueryData(keys.me, me);
-      navigate(pendingInvite() ? '/invite' : '/');
+      const res = await api.post<Me | { mfaRequired: true; challenge: string }>('/auth/login', { email, password });
+      if ('mfaRequired' in res) {
+        setChallenge(res.challenge);
+        setPassword('');
+      } else signedIn(res);
     } catch (err) {
       setError(err);
     } finally {
       setBusy(false);
     }
+  }
+
+  if (challenge) {
+    return (
+      <TwoStepForm
+        challenge={challenge}
+        onSignedIn={signedIn}
+        onExpired={(err) => {
+          setChallenge(null);
+          setError(err);
+        }}
+      />
+    );
   }
 
   return (
@@ -67,6 +89,75 @@ export function LoginPage() {
           <span className="spacer" />
           {registration.data?.open ? <Link to="/register">Create an account</Link> : null}
         </div>
+      </form>
+    </AuthCard>
+  );
+}
+
+/** The second step: a code from the authenticator app, or a recovery code. */
+function TwoStepForm({ challenge, onSignedIn, onExpired }: { challenge: string; onSignedIn: (me: Me) => void; onExpired: (err: unknown) => void }) {
+  const [code, setCode] = useState('');
+  const [recovery, setRecovery] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      onSignedIn(await api.post<Me>('/auth/login/mfa', { challenge, code }));
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'MFA_CHALLENGE_EXPIRED') onExpired(err);
+      else {
+        setError(err);
+        setCode('');
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <AuthCard title="Two-step sign-in">
+      <form className="stack" onSubmit={submit} noValidate>
+        <p className="muted">{recovery ? 'Enter one of the recovery codes you saved when you turned on two-step sign-in. Each works once.' : 'Open your authenticator app and enter the 6-digit code for Home Budget.'}</p>
+        <FormError error={error} />
+        {recovery ? (
+          <Field label="Recovery code" hint="Like k7m2-x9qp.">
+            {(p) => <input {...p} className="input" autoComplete="off" autoCapitalize="none" spellCheck={false} maxLength={20} value={code} onChange={(e) => setCode(e.target.value)} autoFocus />}
+          </Field>
+        ) : (
+          <Field label="6-digit code">
+            {(p) => (
+              <input
+                {...p}
+                className="input otp-input"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9 ]*"
+                maxLength={7}
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/[^0-9 ]/g, ''))}
+                autoFocus
+              />
+            )}
+          </Field>
+        )}
+        <button className="btn primary" type="submit" disabled={busy || code.replace(/\s/g, '').length < (recovery ? 8 : 6)}>
+          {busy ? 'Checking…' : 'Sign in'}
+        </button>
+        <button
+          type="button"
+          className="link-btn small"
+          onClick={() => {
+            setRecovery(!recovery);
+            setCode('');
+            setError(null);
+          }}
+        >
+          {recovery ? 'Use the authenticator app instead' : 'Lost your phone? Use a recovery code'}
+        </button>
       </form>
     </AuthCard>
   );

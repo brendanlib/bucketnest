@@ -393,3 +393,9 @@ a.btn { text-decoration: none; }
 .choice { display: flex; flex-direction: column; align-items: flex-start; gap: 0.2rem; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.75rem 0.9rem; cursor: pointer; color: inherit; }
 .choice:hover:not(:disabled) { border-color: var(--primary); background: var(--surface-2); }
 .choice:disabled { opacity: 0.6; cursor: default; }
+
+/* ── Two-step sign-in ───────────────────────────────── */
+.otp-input { font-family: var(--mono); font-size: 1.4rem; letter-spacing: 0.3em; text-align: center; max-width: 12rem; }
+.qr-box { display: flex; justify-content: center; padding: 0.75rem; background: #fff; border: 1px solid var(--border); border-radius: var(--radius-sm); width: fit-content; margin: 0 auto; }
+.secret-key { display: inline-block; font-family: var(--mono); font-size: 1rem; letter-spacing: 0.08em; padding: 0.3rem 0.5rem; background: var(--surface-2); border-radius: 6px; margin-top: 0.4rem; word-break: break-all; }
+.recovery-codes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4rem 1.5rem; padding-left: 1.4rem; margin: 0; font-family: var(--mono); font-size: 1rem; }

@@ -19,6 +19,7 @@ import { createReportService } from './report.service.js';
 import { createNotificationService } from './notification.service.js';
 import { createDataService } from './data.service.js';
 import { createMemberService } from './member.service.js';
+import { createMfaService } from './mfa.service.js';
 import { createBankFeedService } from './bankfeed.service.js';
 import { createInboxService } from './inbox.service.js';
 
@@ -40,6 +41,7 @@ export function createServices(deps: Deps) {
     bankFeeds: createBankFeedService(deps, { imports, accounts }),
     inbox: createInboxService(deps, imports),
     members: createMemberService(deps, auth),
+    mfa: createMfaService(deps, auth),
     notifications: createNotificationService(deps, { recurring, budgets, sinkingFunds, goals }),
     data: createDataService(deps, accounts),
     netWorth,

@@ -95,11 +95,18 @@ export const authRoutes =
       },
     );
 
+    const MfaChallenge = z.object({ mfaRequired: z.literal(true), challenge: z.string() });
+
     app.post(
       '/auth/login',
       {
         config: authLimit,
-        schema: { tags: ['auth'], body: z.strictObject({ email: Email, password: Password }), response: { 200: MeResponse } },
+        schema: {
+          tags: ['auth'],
+          description: 'With two-step sign-in on, a correct password returns { mfaRequired, challenge } instead of a session; finish with POST /auth/login/mfa.',
+          body: z.strictObject({ email: Email, password: Password }),
+          response: { 200: z.union([MeResponse, MfaChallenge]) },
+        },
       },
       async (request, reply) => {
         const key = `login:${request.body.email}`;
@@ -114,9 +121,40 @@ export const authRoutes =
             ip: request.ip,
           });
           throttle.succeed(key);
+          if (!session) return { mfaRequired: true as const, challenge: services.mfa.challengeFor(user.id) };
           setSessionCookie(reply, config, session);
           const membership = await services.auth.defaultMembership(user.id);
           return me(user.id, membership.householdId, membership.role);
+        } catch (err) {
+          throttle.fail(key);
+          throw err;
+        }
+      },
+    );
+
+    app.post(
+      '/auth/login/mfa',
+      {
+        config: authLimit,
+        schema: {
+          tags: ['auth'],
+          description: 'The second step of a login: a 6-digit code from the authenticator app, or a recovery code.',
+          body: z.strictObject({ challenge: z.string().min(1).max(300), code: z.string().trim().min(6).max(20) }),
+          response: { 200: MeResponse },
+        },
+      },
+      async (request, reply) => {
+        const userId = services.mfa.userForChallenge(request.body.challenge);
+        // Guesses are limited per user (with backoff), on top of the per-IP limit.
+        const key = `mfa:${userId}`;
+        const wait = throttle.hit(key);
+        if (wait !== null) throw tooManyRequests(wait);
+        try {
+          const { session } = await services.mfa.completeLogin(userId, request.body.code, request.headers['user-agent'] ?? null, request.ip);
+          throttle.succeed(key);
+          setSessionCookie(reply, config, session);
+          const membership = await services.auth.defaultMembership(userId);
+          return me(userId, membership.householdId, membership.role);
         } catch (err) {
           throttle.fail(key);
           throw err;
@@ -198,6 +236,39 @@ export const authRoutes =
           setSessionCookie(reply, config, session);
           return reply.status(204).send(null);
         },
+      );
+
+      const Codes = z.object({ recoveryCodes: z.array(z.string()) });
+      const PasswordAndCode = z.strictObject({ password: Password, code: z.string().trim().min(6).max(20) });
+
+      r.get('/auth/mfa', { schema: { tags: ['auth'], response: { 200: z.object({ enabled: z.boolean(), enabledAt: z.string().nullable(), recoveryCodesLeft: z.number().int() }) } } }, async (request) =>
+        services.mfa.status(authOf(request).userId),
+      );
+      r.post(
+        '/auth/mfa/setup',
+        { config: authLimit, schema: { tags: ['auth'], description: 'Confirms the password and returns a new secret to scan. Nothing changes until /auth/mfa/enable.', body: z.strictObject({ password: Password }), response: { 200: z.object({ secret: z.string(), otpauthUri: z.string() }) } } },
+        async (request) => services.mfa.beginSetup(authOf(request).userId, request.body.password),
+      );
+      r.post(
+        '/auth/mfa/enable',
+        { config: authLimit, schema: { tags: ['auth'], description: 'A code from the app turns two-step sign-in on. Returns 10 recovery codes, once. Other sessions are signed out.', body: z.strictObject({ code: z.string().trim().min(6).max(10) }), response: { 200: Codes } } },
+        async (request) => {
+          const a = authOf(request);
+          return services.mfa.enable(a.userId, a.sessionId, request.body.code);
+        },
+      );
+      r.post(
+        '/auth/mfa/disable',
+        { config: authLimit, schema: { tags: ['auth'], body: PasswordAndCode, response: { 204: z.null() } } },
+        async (request, reply) => {
+          await services.mfa.disable(authOf(request).userId, request.body.password, request.body.code);
+          return reply.status(204).send(null);
+        },
+      );
+      r.post(
+        '/auth/mfa/recovery-codes',
+        { config: authLimit, schema: { tags: ['auth'], description: 'Replaces every recovery code with 10 new ones.', body: PasswordAndCode, response: { 200: Codes } } },
+        async (request) => services.mfa.regenerateRecoveryCodes(authOf(request).userId, request.body.password, request.body.code),
       );
 
       r.get(

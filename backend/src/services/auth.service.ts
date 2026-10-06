@@ -114,6 +114,11 @@ export function createAuthService(deps: Deps) {
         log.warn({ email, ip: input.ip }, 'login failed');
         throw new AppError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect');
       }
+      // Two-step sign-in: the password was right, but no session until the code checks out.
+      if (user.totpEnabledAt) {
+        log.info({ userId: user.id, ip: input.ip }, 'password accepted, two-step code needed');
+        return { user, session: null };
+      }
       log.info({ userId: user.id, ip: input.ip }, 'login succeeded');
       return { user, session: await issueSession(user.id, input.userAgent) };
     },

@@ -190,12 +190,20 @@ model User {
 
   /// The household this user last switched to; new sessions open it.
   lastHouseholdId String? @map("last_household_id") @db.Uuid
+  /// TOTP two-step sign-in. Secrets are encrypted (see lib/crypto seal).
+  totpSecret      String?   @map("totp_secret")
+  /// A secret being set up, until the first code confirms it.
+  totpPending     String?   @map("totp_pending")
+  totpEnabledAt   DateTime? @map("totp_enabled_at") @db.Timestamptz(3)
+  /// The last 30-second step a code was accepted for; older or equal steps are refused (no replay).
+  totpLastStep    Int?      @map("totp_last_step")
 
   sessions        Session[]
   resetTokens     PasswordResetToken[]
   memberships     HouseholdMember[]
   transactions    Transaction[]
   lastHousehold   Household?        @relation("LastHousehold", fields: [lastHouseholdId], references: [id], onDelete: SetNull)
+  recoveryCodes   RecoveryCode[]
   invitesSent     HouseholdInvite[] @relation("InvitesSent")
   invitesAccepted HouseholdInvite[] @relation("InvitesAccepted")
 
@@ -978,4 +986,18 @@ model BankFeedAccount {
   @@unique([accountId])
   @@index([householdId])
   @@map("bank_feed_accounts")
+}
+
+/// Single-use codes for signing in without the authenticator app. Only an HMAC is stored.
+model RecoveryCode {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  codeHash  String    @map("code_hash")
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, codeHash])
+  @@map("recovery_codes")
 }
