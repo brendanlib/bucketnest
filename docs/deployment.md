@@ -351,6 +351,7 @@ Rate limits and login logs use the client's IP address. The bundled nginx is alw
 | Login succeeds but you're straight back at the login page | You're on plain HTTP with `COOKIE_SECURE=true`. Use HTTPS, or see [LAN only](#lan-only-no-https). |
 | "The server is not responding" / 502 | The backend is starting or has stopped: `docker compose ps` and `docker compose logs backend`. |
 | The backend exits at start with "Invalid configuration" | The log names the setting. `SESSION_SECRET` must be at least 32 characters and not the example. |
+| Backend log: `P1000: Authentication failed against database server` | `POSTGRES_PASSWORD` in `.env` changed after the database was created (PostgreSQL only reads it the first time). Put the old one back, or set the database to match `.env`: `docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "ALTER USER \"$POSTGRES_USER\" PASSWORD '\''$POSTGRES_PASSWORD'\''"'`, then `docker compose up -d`. Keep a copy of `.env` with your backups. |
 | The build is killed or hangs | Out of memory: add swap (step 2). |
 | Caddy can't get a certificate | The DNS A record must point at this VM, and ports 80 and 443 must be open. Check `journalctl -u caddy`. |
 | Everyone gets "Too many requests" together | `TRUST_PROXY` is blank behind a proxy, so all clients share one IP. |
