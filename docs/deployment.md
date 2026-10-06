@@ -347,7 +347,7 @@ Rate limits and login logs use the client's IP address. The bundled nginx is alw
 
 | Symptom | Fix |
 | --- | --- |
-| "This request did not come from the app" | `PUBLIC_URL` doesn't exactly match the address in the browser (scheme, host and port). Fix it, then `docker compose up -d`. |
+| "This request did not come from the app" | `PUBLIC_URL` doesn't exactly match the address in the browser (scheme, host and port). `docker compose logs backend \| grep origin` shows the address received and the one expected. Fix `.env`, then `docker compose up -d`. |
 | Login succeeds but you're straight back at the login page | You're on plain HTTP with `COOKIE_SECURE=true`. Use HTTPS, or see [LAN only](#lan-only-no-https). |
 | "The server is not responding" / 502 | The backend is starting or has stopped: `docker compose ps` and `docker compose logs backend`. |
 | The backend exits at start with "Invalid configuration" | The log names the setting. `SESSION_SECRET` must be at least 32 characters and not the example. |

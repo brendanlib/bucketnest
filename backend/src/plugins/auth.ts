@@ -71,7 +71,10 @@ export function registerAuth(app: FastifyInstance, config: AppConfig, auth: Auth
 
   app.addHook('onRequest', async (request) => {
     if (SAFE_METHODS.has(request.method)) return;
-    if (requestOrigin(request) !== config.publicOrigin) {
+    const origin = requestOrigin(request);
+    if (origin !== config.publicOrigin) {
+      // Nearly always PUBLIC_URL not matching the address in the browser.
+      request.log.warn({ origin, expected: config.publicOrigin, url: request.url }, 'request refused: origin does not match PUBLIC_URL');
       throw forbidden('BAD_ORIGIN', 'This request did not come from the app');
     }
     const cookie = request.cookies[names.csrf];
