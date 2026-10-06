@@ -32,6 +32,14 @@ export interface ParseInput {
   mapping?: Partial<ColumnMapping>;
 }
 
+/**
+ * A row from any source. `fingerprint` when the source has its own stable id
+ * (e.g. `up:<id>`); `transferAccountId` when the source knows the row is a
+ * transfer with another of the household's accounts.
+ */
+export type SourceRow = ParsedRow & { fingerprint?: string; transferAccountId?: string };
+type ImportAccount = NonNullable<Awaited<ReturnType<typeof findAccount>>>;
+
 export interface Decision {
   index: number;
   action: ImportAction;
@@ -91,9 +99,22 @@ export function createImportService(deps: Deps, services: { transactions: Transa
     validateMapping(mapping, width);
 
     const parsed = applyMapping(table, mapping);
-    const valid = parsed.filter((r) => r.errors.length === 0) as (ParsedRow & { date: string; amountCents: number; direction: 'debit' | 'credit' })[];
+    const rows = await classify(householdId, account, parsed);
+    return { account, mapping, table, rows, profileUsed: Boolean(profile && profile.delimiter === delimiter) };
+  }
+
+  /**
+   * Classifies rows from any source (a CSV file, a bank feed) against what the
+   * app already has: duplicates, scheduled payments, hand-entered transactions
+   * to merge with, and rule suggestions. A source with its own stable ids sets
+   * `fingerprint`; otherwise it's derived from the row (spec §13).
+   */
+  async function classify(householdId: string, account: ImportAccount, parsed: SourceRow[]) {
+    const valid = parsed.filter((r) => r.errors.length === 0) as (SourceRow & { date: string; amountCents: number; direction: 'debit' | 'credit' })[];
     const fingerprints = new Map<number, string>();
-    fingerprintRows(account.id, valid).forEach((fp, i) => fingerprints.set(valid[i]!.index, fp));
+    const derived = valid.filter((r) => !r.fingerprint);
+    fingerprintRows(account.id, derived).forEach((fp, i) => fingerprints.set(derived[i]!.index, fp));
+    for (const r of valid) if (r.fingerprint) fingerprints.set(r.index, r.fingerprint);
 
     // Duplicates: bank rows already linked for this account.
     const existing = new Map<string, string>();
@@ -177,9 +198,15 @@ export function createImportService(deps: Deps, services: { transactions: Transa
             ruleName: null,
           };
         } else {
-          const subject = { description: r.description, payee: r.payee, amountCents: r.amountCents!, direction: r.direction!, accountId: account.id };
-          const hit = firstMatchingRule(specs, subject);
-          suggestion = hit ? suggestFromRule(hit.rule, hit.rule.setCategory?.kind ?? null, subject, account.class) : defaultSuggestion(r.direction!, account.class);
+          const transferWith = (r as SourceRow).transferAccountId;
+          if (transferWith) {
+            // The bank says it's a move between the household's own accounts.
+            suggestion = { type: 'TRANSFER', categoryId: null, toAccountId: r.direction === 'debit' ? transferWith : null, fromAccountId: r.direction === 'credit' ? transferWith : null, payee: null, notes: null, ruleId: null, ruleName: null };
+          } else {
+            const subject = { description: r.description, payee: r.payee, amountCents: r.amountCents!, direction: r.direction!, accountId: account.id };
+            const hit = firstMatchingRule(specs, subject);
+            suggestion = hit ? suggestFromRule(hit.rule, hit.rule.setCategory?.kind ?? null, subject, account.class) : defaultSuggestion(r.direction!, account.class);
+          }
         }
       }
       const status = r.errors.length ? 'error' : duplicateOf ? 'duplicate' : 'new';
@@ -203,12 +230,156 @@ export function createImportService(deps: Deps, services: { transactions: Transa
         defaultAction,
       };
     });
-
-    return { account, mapping, table, rows, profileUsed: Boolean(profile && profile.delimiter === delimiter) };
+    return rows;
   }
 
   type Analysed = Awaited<ReturnType<typeof analyse>>;
   type Row = Analysed['rows'][number];
+
+  /**
+   * Applies decisions (or each row's default action) as one undoable batch.
+   * Strict (a person reviewed the rows): any row that can't be imported as
+   * chosen stops the whole import. Not strict (automatic sources): such rows
+   * are skipped, and nothing is written when there's nothing new.
+   */
+  async function apply(
+    householdId: string,
+    userId: string | null,
+    account: ImportAccount,
+    rows: Row[],
+    opts: { decisions?: Decision[]; fileName: string; strict: boolean; profile?: ColumnMapping },
+  ) {
+    const decisions = new Map((opts.decisions ?? []).map((d) => [d.index, d]));
+    const memo: PrepareMemo = new Map();
+    const creates: { index: number; data: Awaited<ReturnType<TransactionService['prepare']>>; fingerprint: string; link?: { recurringId: string; occurrenceDate: string } }[] = [];
+    const merges: { index: number; transactionId: string; fingerprint: string }[] = [];
+    const problems: { index: number; message: string }[] = [];
+    let skipped = 0;
+
+    for (const row of rows) {
+      const d = decisions.get(row.index);
+      const action = d?.action ?? row.defaultAction;
+      if (action === 'skip') {
+        skipped++;
+        continue;
+      }
+      if (row.status !== 'new' || !row.suggestion || !row.fingerprint) {
+        problems.push({ index: row.index, message: row.status === 'duplicate' ? 'Already imported' : row.errors[0] ?? 'Cannot import this row' });
+        continue;
+      }
+      try {
+        if (action === 'merge') {
+          if (!row.merge) throw validationError('No transaction to merge with');
+          merges.push({ index: row.index, transactionId: row.merge.transactionId, fingerprint: row.fingerprint });
+          continue;
+        }
+        const bank = { date: row.date!, description: d?.description?.trim() || row.description, amountCents: row.amountCents!, accountId: account.id, payee: row.payee };
+        let txInput: TransactionInput;
+        let link: { recurringId: string; occurrenceDate: string } | undefined;
+        if (action === 'match') {
+          if (!row.match) throw validationError('No scheduled payment to match');
+          const draft = await services.recurring.draft(householdId, row.match.recurringId, row.match.occurrenceDate);
+          const categoryId = d?.categoryId !== undefined ? d.categoryId : (draft.splits?.[0]?.categoryId ?? null);
+          txInput = {
+            ...draft,
+            date: bank.date,
+            description: bank.description,
+            amountCents: bank.amountCents,
+            payee: d?.payee ?? draft.payee ?? bank.payee,
+            notes: d?.notes ?? draft.notes,
+            splits: categoryId ? [{ categoryId, amountCents: bank.amountCents }] : draft.type === 'SAVINGS_CONTRIBUTION' ? undefined : [],
+            cleared: true,
+          };
+          link = { recurringId: row.match.recurringId, occurrenceDate: row.match.occurrenceDate };
+        } else {
+          const s = { ...row.suggestion };
+          if (d?.type) s.type = d.type;
+          if (d?.categoryId !== undefined) s.categoryId = d.categoryId;
+          if (d?.payee !== undefined) s.payee = d.payee;
+          if (d?.notes !== undefined) s.notes = d.notes;
+          if (s.type === 'TRANSFER') {
+            const other = d?.otherAccountId ?? s.toAccountId ?? s.fromAccountId;
+            s.toAccountId = row.direction === 'debit' ? other : null;
+            s.fromAccountId = row.direction === 'credit' ? other : null;
+            s.categoryId = null;
+          }
+          txInput = suggestionToInput(s, { ...bank, cleared: true });
+        }
+        const data = await services.transactions.prepare(householdId, txInput, { allowUncategorised: true, memo });
+        creates.push({ index: row.index, data, fingerprint: row.fingerprint, link });
+      } catch (err) {
+        if (err instanceof AppError) problems.push({ index: row.index, message: err.message });
+        else throw err;
+      }
+    }
+    if (problems.length && opts.strict) {
+      throw validationError(`${problems.length} row${problems.length === 1 ? '' : 's'} can’t be imported as chosen`, { rows: problems.slice(0, 100) });
+    }
+    skipped += problems.length;
+    if (!opts.strict && creates.length === 0 && merges.length === 0) return null;
+
+    const batch = await db.$transaction(
+      async (tx) => {
+        const b = await tx.importBatch.create({
+          data: {
+            householdId,
+            accountId: account.id,
+            fileName: opts.fileName.slice(0, 200),
+            rowCount: rows.length,
+            importedCount: creates.length,
+            matchedCount: creates.filter((c) => c.link).length,
+            mergedCount: merges.length,
+            skippedCount: skipped,
+          },
+        });
+        for (const c of creates) {
+          const created = await txRepo.createTransaction(
+            tx,
+            householdId,
+            {
+              ...c.data.data,
+              createdById: userId,
+              fingerprint: c.fingerprint,
+              importBatchId: b.id,
+              ...(c.link ? { recurringId: c.link.recurringId, occurrenceDate: dateIn(c.link.occurrenceDate) } : {}),
+            },
+            c.data.splits,
+          );
+          await tx.importLink.create({ data: { householdId, transactionId: created.id, accountId: account.id, fingerprint: c.fingerprint, importBatchId: b.id } });
+        }
+        for (const m of merges) {
+          // Unique (transaction, account) means a row can only merge into a side not yet linked.
+          await tx.importLink.create({ data: { householdId, transactionId: m.transactionId, accountId: account.id, fingerprint: m.fingerprint, importBatchId: b.id, merged: true } });
+        }
+        if (opts.profile) {
+          const m = opts.profile;
+          const data = {
+            name: opts.fileName.slice(0, 120),
+            delimiter: m.delimiter,
+            hasHeader: m.hasHeader,
+            dateFormat: m.dateFormat,
+            signConvention: m.signConvention,
+            dateColumn: m.dateColumn,
+            descriptionColumn: m.descriptionColumn,
+            amountColumn: m.amountColumn ?? null,
+            debitColumn: m.debitColumn ?? null,
+            creditColumn: m.creditColumn ?? null,
+            balanceColumn: m.balanceColumn ?? null,
+            payeeColumn: m.payeeColumn ?? null,
+          };
+          await tx.importProfile.upsert({ where: { accountId: account.id }, create: { householdId, accountId: account.id, ...data }, update: data });
+        }
+        return b;
+      },
+      { timeout: 120_000, maxWait: 10_000 },
+    ).catch((err: unknown) => {
+      if (err && typeof err === 'object' && 'code' in err && (err as { code: string }).code === 'P2002') {
+        throw conflict('IMPORT_CHANGED', 'Some rows were imported or posted while you were reviewing. Check the file again.');
+      }
+      throw err;
+    });
+    return batch.id;
+  }
 
   /** Statement closing balance (from a mapped balance column) against the app's balance after this import. */
   async function balanceCheck(householdId: string, a: Analysed, decide: (row: Row) => ImportAction) {
@@ -265,134 +436,36 @@ export function createImportService(deps: Deps, services: { transactions: Transa
     /** Re-parses the file on the server and applies the user's decisions in one database transaction. */
     async commit(householdId: string, userId: string, input: ParseInput & { decisions: Decision[]; saveProfile?: boolean }) {
       const a = await analyse(householdId, input);
-      const decisions = new Map(input.decisions.map((d) => [d.index, d]));
-      const memo: PrepareMemo = new Map();
-      const creates: { index: number; data: Awaited<ReturnType<TransactionService['prepare']>>; fingerprint: string; link?: { recurringId: string; occurrenceDate: string } }[] = [];
-      const merges: { index: number; transactionId: string; fingerprint: string }[] = [];
-      const problems: { index: number; message: string }[] = [];
-      let skipped = 0;
-
-      for (const row of a.rows) {
-        const d = decisions.get(row.index);
-        const action = d?.action ?? row.defaultAction;
-        if (action === 'skip') {
-          skipped++;
-          continue;
-        }
-        if (row.status !== 'new' || !row.suggestion || !row.fingerprint) {
-          problems.push({ index: row.index, message: row.status === 'duplicate' ? 'Already imported' : row.errors[0] ?? 'Cannot import this row' });
-          continue;
-        }
-        try {
-          if (action === 'merge') {
-            if (!row.merge) throw validationError('No transaction to merge with');
-            merges.push({ index: row.index, transactionId: row.merge.transactionId, fingerprint: row.fingerprint });
-            continue;
-          }
-          const bank = { date: row.date!, description: d?.description?.trim() || row.description, amountCents: row.amountCents!, accountId: a.account.id, payee: row.payee };
-          let txInput: TransactionInput;
-          let link: { recurringId: string; occurrenceDate: string } | undefined;
-          if (action === 'match') {
-            if (!row.match) throw validationError('No scheduled payment to match');
-            const draft = await services.recurring.draft(householdId, row.match.recurringId, row.match.occurrenceDate);
-            const categoryId = d?.categoryId !== undefined ? d.categoryId : (draft.splits?.[0]?.categoryId ?? null);
-            txInput = {
-              ...draft,
-              date: bank.date,
-              description: bank.description,
-              amountCents: bank.amountCents,
-              payee: d?.payee ?? draft.payee ?? bank.payee,
-              notes: d?.notes ?? draft.notes,
-              splits: categoryId ? [{ categoryId, amountCents: bank.amountCents }] : draft.type === 'SAVINGS_CONTRIBUTION' ? undefined : [],
-              cleared: true,
-            };
-            link = { recurringId: row.match.recurringId, occurrenceDate: row.match.occurrenceDate };
-          } else {
-            const s = { ...row.suggestion };
-            if (d?.type) s.type = d.type;
-            if (d?.categoryId !== undefined) s.categoryId = d.categoryId;
-            if (d?.payee !== undefined) s.payee = d.payee;
-            if (d?.notes !== undefined) s.notes = d.notes;
-            if (s.type === 'TRANSFER') {
-              const other = d?.otherAccountId ?? s.toAccountId ?? s.fromAccountId;
-              s.toAccountId = row.direction === 'debit' ? other : null;
-              s.fromAccountId = row.direction === 'credit' ? other : null;
-              s.categoryId = null;
-            }
-            txInput = suggestionToInput(s, { ...bank, cleared: true });
-          }
-          const data = await services.transactions.prepare(householdId, txInput, { allowUncategorised: true, memo });
-          creates.push({ index: row.index, data, fingerprint: row.fingerprint, link });
-        } catch (err) {
-          if (err instanceof AppError) problems.push({ index: row.index, message: err.message });
-          else throw err;
-        }
-      }
-      if (problems.length) {
-        throw validationError(`${problems.length} row${problems.length === 1 ? '' : 's'} can’t be imported as chosen`, { rows: problems.slice(0, 100) });
-      }
-
-      const batch = await db.$transaction(
-        async (tx) => {
-          const b = await tx.importBatch.create({
-            data: {
-              householdId,
-              accountId: a.account.id,
-              fileName: input.fileName.slice(0, 200),
-              rowCount: a.rows.length,
-              importedCount: creates.length,
-              matchedCount: creates.filter((c) => c.link).length,
-              mergedCount: merges.length,
-              skippedCount: skipped,
-            },
-          });
-          for (const c of creates) {
-            const created = await txRepo.createTransaction(
-              tx,
-              householdId,
-              {
-                ...c.data.data,
-                createdById: userId,
-                fingerprint: c.fingerprint,
-                importBatchId: b.id,
-                ...(c.link ? { recurringId: c.link.recurringId, occurrenceDate: dateIn(c.link.occurrenceDate) } : {}),
-              },
-              c.data.splits,
-            );
-            await tx.importLink.create({ data: { householdId, transactionId: created.id, accountId: a.account.id, fingerprint: c.fingerprint, importBatchId: b.id } });
-          }
-          for (const m of merges) {
-            // Unique (transaction, account) means a row can only merge into a side not yet linked.
-            await tx.importLink.create({ data: { householdId, transactionId: m.transactionId, accountId: a.account.id, fingerprint: m.fingerprint, importBatchId: b.id, merged: true } });
-          }
-          if (input.saveProfile !== false) {
-            const m = a.mapping;
-            const data = {
-              name: input.fileName.slice(0, 120),
-              delimiter: m.delimiter,
-              hasHeader: m.hasHeader,
-              dateFormat: m.dateFormat,
-              signConvention: m.signConvention,
-              dateColumn: m.dateColumn,
-              descriptionColumn: m.descriptionColumn,
-              amountColumn: m.amountColumn ?? null,
-              debitColumn: m.debitColumn ?? null,
-              creditColumn: m.creditColumn ?? null,
-              balanceColumn: m.balanceColumn ?? null,
-              payeeColumn: m.payeeColumn ?? null,
-            };
-            await tx.importProfile.upsert({ where: { accountId: a.account.id }, create: { householdId, accountId: a.account.id, ...data }, update: data });
-          }
-          return b;
-        },
-        { timeout: 120_000, maxWait: 10_000 },
-      ).catch((err: unknown) => {
-        if (err && typeof err === 'object' && 'code' in err && (err as { code: string }).code === 'P2002') {
-          throw conflict('IMPORT_CHANGED', 'Some rows were imported or posted while you were reviewing. Check the file again.');
-        }
-        throw err;
+      const id = await apply(householdId, userId, a.account, a.rows, {
+        decisions: input.decisions,
+        fileName: input.fileName,
+        strict: true,
+        profile: input.saveProfile !== false ? a.mapping : undefined,
       });
-      return this.getBatch(householdId, batch.id);
+      return this.getBatch(householdId, id!);
+    },
+
+    /**
+     * Imports rows from an automatic source (a bank feed or a watched folder)
+     * with each row's default action: duplicates skipped, scheduled payments
+     * matched, hand-entered transactions merged, rules applied. Returns the
+     * batch, or null when there was nothing new.
+     */
+    async importRows(householdId: string, accountId: string, rows: SourceRow[], fileName: string) {
+      const account = await findAccount(db, householdId, accountId);
+      if (!account) throw validationError('Unknown account', { field: 'accountId' });
+      const classified = await classify(householdId, account, rows);
+      const id = await apply(householdId, null, account, classified, { fileName, strict: false });
+      return id ? this.getBatch(householdId, id) : null;
+    },
+
+    /** Parses a CSV with the account's saved column layout and imports it like importRows. */
+    async importFile(householdId: string, accountId: string, csv: string, fileName: string) {
+      const profile = await db.importProfile.findFirst({ where: { householdId, accountId } });
+      if (!profile) throw validationError('Import one file from this bank by hand first, so the app learns its column layout', { field: 'accountId' });
+      const a = await analyse(householdId, { accountId, fileName, csv });
+      const id = await apply(householdId, null, a.account, a.rows, { fileName, strict: false });
+      return { batch: id ? await this.getBatch(householdId, id) : null, rows: a.rows.length };
     },
 
     async listBatches(householdId: string) {

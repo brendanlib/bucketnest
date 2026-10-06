@@ -18,7 +18,7 @@ async function main() {
   const config = loadConfig();
   const db = createDb(config.databaseUrl);
   const silent = { info() {}, warn() {}, error() {}, debug() {}, fatal() {}, trace() {}, child() { return silent; }, level: 'silent', silent() {} };
-  const auth = createAuthService({ db, config, mailer: createMailer(config), log: silent as never, now: () => new Date() });
+  const auth = createAuthService({ db, config, mailer: createMailer(config), log: silent as never, now: () => new Date(), fetch });
   try {
     const password = generatePassword();
     const user = await auth.setPasswordByEmail(email, password);

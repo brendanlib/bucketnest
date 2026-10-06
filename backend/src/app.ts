@@ -28,6 +28,7 @@ import { onboardingRoutes } from './routes/onboarding.js';
 import { reportRoutes } from './routes/reports.js';
 import { notificationRoutes } from './routes/notifications.js';
 import { memberRoutes } from './routes/members.js';
+import { bankFeedRoutes } from './routes/bankfeeds.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -42,6 +43,7 @@ export interface BuildOptions {
   db: Db;
   mailer?: Mailer;
   now?: () => Date;
+  fetch?: typeof fetch;
 }
 
 export async function buildApp(opts: BuildOptions): Promise<FastifyInstance> {
@@ -68,6 +70,7 @@ export async function buildApp(opts: BuildOptions): Promise<FastifyInstance> {
     mailer: opts.mailer ?? createMailer(config),
     log: app.log,
     now: opts.now ?? (() => new Date()),
+    fetch: opts.fetch ?? globalThis.fetch,
   };
   const services = createServices(deps);
   const throttle = new AttemptThrottle(config.rateLimits.auth);
@@ -102,6 +105,7 @@ export async function buildApp(opts: BuildOptions): Promise<FastifyInstance> {
         await protectedApi.register(onboardingRoutes(services));
         await protectedApi.register(reportRoutes(services));
         await protectedApi.register(notificationRoutes(services, config));
+        await protectedApi.register(bankFeedRoutes(services));
       });
     },
     { prefix: '/api' },

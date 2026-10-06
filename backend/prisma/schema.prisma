@@ -284,6 +284,8 @@ model Household {
 
   members                  HouseholdMember[]
   invites                  HouseholdInvite[]
+  bankConnections          BankConnection[]
+  bankFeedAccounts         BankFeedAccount[]
   sessions                 Session[]
   lastUsedBy               User[]             @relation("LastHousehold")
   buckets                  Bucket[]
@@ -408,6 +410,8 @@ model Account {
   openingDate         DateTime            @map("opening_date") @db.Date
   last4               String?             @db.Char(4)
   bucketTagId         String?             @map("bucket_tag_id") @db.Uuid
+  /// Folder name under the import inbox; CSVs dropped there import into this account.
+  inboxFolder         String?             @unique @map("inbox_folder")
   includeInBudget     Boolean             @default(true) @map("include_in_budget")
   includeInNetWorth   Boolean             @default(true) @map("include_in_net_worth")
   repaymentTreatment  RepaymentTreatment? @map("repayment_treatment")
@@ -419,6 +423,7 @@ model Account {
   updatedAt           DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   household       Household              @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  feedAccounts    BankFeedAccount[]
   bucketTag       Bucket?                @relation(fields: [bucketTagId], references: [id], onDelete: SetNull)
   offsetFor       Account?               @relation("Offset", fields: [offsetForAccountId], references: [id], onDelete: SetNull)
   offsets         Account[]              @relation("Offset")
@@ -916,4 +921,61 @@ model NotificationSetting {
 
   @@unique([householdId, type])
   @@map("notification_settings")
+}
+
+enum BankProvider {
+  UP
+}
+
+enum BankConnectionStatus {
+  ACTIVE
+  ERROR
+}
+
+/// A direct connection to a bank's own API (no aggregator). The token is
+/// encrypted with a key derived from SESSION_SECRET and never sent back out.
+model BankConnection {
+  id              String               @id @default(uuid()) @db.Uuid
+  householdId     String               @map("household_id") @db.Uuid
+  provider        BankProvider
+  label           String
+  tokenCiphertext String               @map("token_ciphertext")
+  status          BankConnectionStatus @default(ACTIVE)
+  lastSyncAt      DateTime?            @map("last_sync_at") @db.Timestamptz(3)
+  lastError       String?              @map("last_error")
+  createdById     String?              @map("created_by") @db.Uuid
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  household Household         @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  accounts  BankFeedAccount[]
+
+  @@index([householdId])
+  @@map("bank_connections")
+}
+
+/// One account at the bank, and the app account its transactions go into (if any).
+model BankFeedAccount {
+  id           String    @id @default(uuid()) @db.Uuid
+  householdId  String    @map("household_id") @db.Uuid
+  connectionId String    @map("connection_id") @db.Uuid
+  externalId   String    @map("external_id")
+  name         String
+  kind         String
+  balanceCents BigInt    @map("balance_cents")
+  accountId    String?   @map("account_id") @db.Uuid
+  /// Transactions from this date on are imported.
+  syncFrom     DateTime? @map("sync_from") @db.Date
+  lastSyncAt   DateTime? @map("last_sync_at") @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  household  Household      @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  connection BankConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  account    Account?       @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  @@unique([connectionId, externalId])
+  @@unique([accountId])
+  @@index([householdId])
+  @@map("bank_feed_accounts")
 }

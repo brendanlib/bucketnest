@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { api, qs } from './client';
-import type { HouseholdMembers, AppNotification, NotificationSetting, Asset, BudgetActualReport, CalendarItem, DebtReductionItem, ForecastReport, IncomeReport, NetWorthReport, SpendingReport, Onboarding, Account, BalanceHistory, Bucket, Budget, BudgetSummary, Category, Dashboard, Debt, Goal, ImportBatch, Me, Occurrence, Page, PayoffComparison, PayoffPlan, Recurring, Rule, SessionInfo, Settings, SinkingFund, Transaction } from './types';
+import type { BankConnection, ImportInbox, HouseholdMembers, AppNotification, NotificationSetting, Asset, BudgetActualReport, CalendarItem, DebtReductionItem, ForecastReport, IncomeReport, NetWorthReport, SpendingReport, Onboarding, Account, BalanceHistory, Bucket, Budget, BudgetSummary, Category, Dashboard, Debt, Goal, ImportBatch, Me, Occurrence, Page, PayoffComparison, PayoffPlan, Recurring, Rule, SessionInfo, Settings, SinkingFund, Transaction } from './types';
 
 export const keys = {
   me: ['me'] as const,
@@ -138,6 +138,9 @@ export const useForecast = (months: number, method?: string) => useReport<Foreca
 export const useAssets = () => useQuery({ queryKey: ['assets'], queryFn: async () => (await api.get<{ items: Asset[] }>('/assets')).items });
 export const useCalendar = (from: string, to: string) =>
   useQuery({ queryKey: ['calendar', from, to], queryFn: async () => (await api.get<{ items: CalendarItem[] }>(`/calendar${qs({ from, to })}`)).items, placeholderData: (p) => p });
+
+export const useBankConnections = () => useQuery({ queryKey: ['bank-connections'], queryFn: async () => (await api.get<{ items: BankConnection[] }>('/bank-connections')).items });
+export const useImportInbox = () => useQuery({ queryKey: ['import-inbox'], queryFn: () => api.get<ImportInbox>('/import-inbox') });
 
 export const useMembers = () => useQuery({ queryKey: ['members'], queryFn: () => api.get<HouseholdMembers>('/household/members') });
 

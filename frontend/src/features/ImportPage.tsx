@@ -81,6 +81,9 @@ export function ImportPage() {
   return (
     <>
       <PageHeader title="Import transactions" subtitle="Upload a CSV export from your bank. Nothing is saved until you confirm, and every import can be undone." />
+      <p className="small" style={{ marginTop: '-0.5rem', marginBottom: '1rem' }}>
+        Bank with Up? It can sync automatically. Any other bank’s files can import themselves from a folder. Both are in <Link to="/settings?section=Bank feeds">Settings → Bank feeds</Link>.
+      </p>
       <PageTip id="import" title="Importing from your bank">
         Download a CSV for one account from your internet banking, then upload it here. Rows you already have are skipped, scheduled bills are matched, and you review everything before it’s saved. Every import can be undone.
       </PageTip>

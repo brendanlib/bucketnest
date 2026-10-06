@@ -742,3 +742,28 @@ export interface InviteInfo {
   expiresAt: string;
   hasAccount: boolean | null;
 }
+
+export interface BankConnection {
+  id: string;
+  provider: 'UP';
+  label: string;
+  status: 'ACTIVE' | 'ERROR';
+  lastSyncAt: string | null;
+  lastError: string | null;
+  accounts: {
+    id: string;
+    name: string;
+    kind: string;
+    bankBalanceCents: number;
+    accountId: string | null;
+    accountName: string | null;
+    appBalanceCents: number | null;
+    syncFrom: string | null;
+    lastSyncAt: string | null;
+  }[];
+}
+
+export interface ImportInbox {
+  enabled: boolean;
+  accounts: { accountId: string; accountName: string; folder: string | null; hasLayout: boolean; imported: string[]; failed: string[] }[];
+}

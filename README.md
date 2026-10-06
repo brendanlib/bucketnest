@@ -66,6 +66,10 @@ A self-hosted household budget app built on the Barefoot Investor bucket method:
     - categorisation rules fill in categories and transfers.
   - You approve, change or skip each row. With a balance column, the import checks you'll match the statement.
   - Every import can be undone in one step.
+- **Bank feeds (no aggregator):**
+  - **Up Bank:** paste a personal access token and settled transactions sync every 30 minutes, straight from Up's own API. Transfers between your Up accounts are recorded once, as transfers. New accounts start with an opening balance worked out to match Up.
+  - **Any other bank:** give an account a folder on the server and drop its CSV exports there; they import themselves every few minutes.
+  - Both run through the import checks above (duplicates, bill matching, rules), and every sync can be undone.
 - **Rules:**
   - "Description contains WOOLWORTHS → Groceries", with optional amount, account and money-in or money-out conditions. Plain text only, never regex.
   - Rules run in order and can be tested against recent transactions or applied to uncategorised ones.
@@ -219,4 +223,4 @@ docs/      deployment (Ubuntu), backup and restore, data model, security review
 
 7. **Household invites** ✅ invite links, joining with a new or existing account, members, ownership hand-over, household switcher.
 
-Out of scope for v1: bank feeds, multi-currency, public holiday calendars, native apps, live investment prices, and hosting under a subpath.
+Out of scope for v1: aggregator bank feeds (Basiq, Fiskil; Up is supported directly), multi-currency, public holiday calendars, native apps, live investment prices, and hosting under a subpath.

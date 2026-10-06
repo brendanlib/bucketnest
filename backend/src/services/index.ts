@@ -19,6 +19,8 @@ import { createReportService } from './report.service.js';
 import { createNotificationService } from './notification.service.js';
 import { createDataService } from './data.service.js';
 import { createMemberService } from './member.service.js';
+import { createBankFeedService } from './bankfeed.service.js';
+import { createInboxService } from './inbox.service.js';
 
 export function createServices(deps: Deps) {
   const transactions = createTransactionService(deps);
@@ -33,7 +35,10 @@ export function createServices(deps: Deps) {
   const recurring = createRecurringService(deps, transactions);
   const rules = createRuleService(deps, transactions);
   const auth = createAuthService(deps);
+  const imports = createImportService(deps, { transactions, recurring, rules });
   return {
+    bankFeeds: createBankFeedService(deps, { imports, accounts }),
+    inbox: createInboxService(deps, imports),
     members: createMemberService(deps, auth),
     notifications: createNotificationService(deps, { recurring, budgets, sinkingFunds, goals }),
     data: createDataService(deps, accounts),
@@ -44,7 +49,7 @@ export function createServices(deps: Deps) {
     goals,
     debts,
     rules,
-    imports: createImportService(deps, { transactions, recurring, rules }),
+    imports,
     auth,
     settings: createSettingsService(deps),
     buckets: createBucketService(deps),

@@ -48,6 +48,11 @@ services:
       DEMO_PASSWORD: ${DEMO_PASSWORD:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       AUTH_RATE_LIMIT_PER_MINUTE: ${AUTH_RATE_LIMIT_PER_MINUTE:-5}
+      # Folder import: CSVs dropped into ./inbox/<account folder>/ import themselves.
+      IMPORT_INBOX_DIR: /data/inbox
+    volumes:
+      - ./inbox:/data/inbox
+    # db: PostgreSQL. web: nginx, plus outgoing HTTPS for bank feeds (Up).
     networks: [db, web]
 
   frontend:

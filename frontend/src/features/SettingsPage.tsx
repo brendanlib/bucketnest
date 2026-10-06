@@ -17,8 +17,9 @@ import { useHousehold } from '../lib/household';
 import { getThemePref, setThemePref, type ThemePref } from '../lib/theme';
 import { strings } from '../locales/en-AU';
 import { BucketEditor } from './BucketEditor';
+import { BankFeedsSettings } from './BankFeedsSettings';
 
-const SECTIONS = ['Budget', 'Localisation', 'Notifications', 'Household', 'Security', 'Data', 'Appearance'] as const;
+const SECTIONS = ['Budget', 'Localisation', 'Notifications', 'Household', 'Bank feeds', 'Security', 'Data', 'Appearance'] as const;
 type Section = (typeof SECTIONS)[number];
 
 function Card({ title, children, description }: { title: string; description?: string; children: ReactNode }) {
@@ -48,6 +49,7 @@ export function SettingsPage() {
         {section === 'Localisation' ? <LocalisationSettings settings={settings.data} /> : null}
         {section === 'Household' ? <HouseholdSettings settings={settings.data} /> : null}
         {section === 'Notifications' ? <NotificationSettings /> : null}
+        {section === 'Bank feeds' ? <BankFeedsSettings /> : null}
         {section === 'Security' ? <SecuritySettings /> : null}
         {section === 'Data' ? <DataSettings settings={settings.data} /> : null}
         {section === 'Appearance' ? <AppearanceSettings /> : null}

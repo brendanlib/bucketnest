@@ -11,6 +11,8 @@ export interface Deps {
   log: FastifyBaseLogger;
   /** Injected so tests can control time. */
   now: () => Date;
+  /** Outbound HTTP (bank APIs). Injected so tests can stand in for the bank. */
+  fetch: typeof fetch;
 }
 
 /** The authenticated caller. Every household-scoped service call takes one. */

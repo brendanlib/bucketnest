@@ -42,6 +42,8 @@ export interface TestAppOptions {
   clock?: TestClock;
   rateLimits?: Partial<AppConfig['rateLimits']>;
   beforeReady?: (app: FastifyInstance) => void;
+  /** Stands in for outbound HTTP (bank APIs). */
+  fetch?: typeof fetch;
 }
 
 export async function createTestApp(opts: TestAppOptions = {}) {
@@ -55,7 +57,7 @@ export async function createTestApp(opts: TestAppOptions = {}) {
     ...opts.env,
   });
   config.rateLimits = { auth: 1000, api: 10_000, ...opts.rateLimits };
-  const app = await buildApp({ config, db: testDb(), mailer: opts.mailer, now: opts.clock?.now });
+  const app = await buildApp({ config, db: testDb(), mailer: opts.mailer, now: opts.clock?.now, fetch: opts.fetch ?? (async () => { throw new Error('Unexpected outbound request in a test'); }) });
   opts.beforeReady?.(app);
   await app.ready();
   return app;

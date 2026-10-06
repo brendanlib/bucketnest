@@ -9,3 +9,6 @@ backups/
 playwright-report/
 test-results/
 .DS_Store
+
+# Folder import drop-off (bank files)
+inbox/

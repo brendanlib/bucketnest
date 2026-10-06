@@ -10,6 +10,18 @@ export function buildJobs(app: FastifyInstance): Job[] {
       run: () => app.services.notifications.generateAll(),
     },
     {
+      // Settled transactions from connected banks.
+      name: 'bank-sync',
+      everyMs: 30 * 60_000,
+      run: () => app.services.bankFeeds.syncAll(),
+    },
+    {
+      // Bank files dropped into account folders (only when IMPORT_INBOX_DIR is set).
+      name: 'import-inbox',
+      everyMs: 5 * 60_000,
+      run: () => app.services.inbox.scan(),
+    },
+    {
       // Stores the snapshot for the 1st of the month once per household; history is recomputable anyway.
       name: 'net-worth-snapshot',
       everyMs: 60 * 60_000,

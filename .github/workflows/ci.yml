@@ -58,6 +58,7 @@ jobs:
           sed -i "s|^DEMO_PASSWORD=.*|DEMO_PASSWORD=$DEMO_PASSWORD|" .env
           # Every test signs up from the same IP.
           echo "AUTH_RATE_LIMIT_PER_MINUTE=200" >> .env
+          mkdir -p inbox && sudo chown 1000:1000 inbox
       - run: docker compose up -d --build --wait --wait-timeout 300
       - run: curl -fsS http://localhost:8080/api/health/ready
       - uses: actions/setup-node@v4

@@ -12,7 +12,7 @@ test.skip(!password, 'set E2E_DEMO_PASSWORD to the demo login to run the accessi
 const PAGES = [
   '/dashboard', '/calendar', '/reports', '/net-worth', '/transactions', '/accounts', '/budget', '/bills',
   '/sinking-funds', '/recurring', '/import', '/fire-extinguisher', '/debts', '/categories', '/rules',
-  '/settings', '/settings?section=Notifications', '/settings?section=Data', '/settings?section=Security', '/settings?section=Household',
+  '/settings', '/settings?section=Notifications', '/settings?section=Data', '/settings?section=Security', '/settings?section=Household', '/settings?section=Bank feeds',
 ];
 
 async function scan(page: Page, label: string) {

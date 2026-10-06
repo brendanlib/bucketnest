@@ -111,6 +111,12 @@ Leave `ALLOW_REGISTRATION` blank. The first person to sign up becomes the owner,
 
 ## 6. Start the app
 
+The inbox folder is where bank files for [folder import](#folder-import) go. Create it owned by the app's user (uid 1000), so the backend can move imported files:
+
+```bash
+mkdir -p inbox && sudo chown 1000:1000 inbox
+```
+
 ```bash
 docker compose up -d --build     # the first build takes a few minutes
 docker compose ps                # wait until all three show "healthy"
@@ -194,6 +200,32 @@ SMTP_FROM=Home Budget <budget@example.com>
 
 Port 465 uses TLS from the start; port 587 upgrades with STARTTLS. Apply the change with `docker compose up -d`. Many cloud providers block outgoing port 25, so use 587 or 465.
 
+## Bank feeds
+
+### Up Bank
+
+Up gives its customers a personal API, so the app talks to Up directly, with no aggregator involved.
+
+1. Get a token at api.up.com.au (or in the Up app: Data sharing → Personal Access Token).
+2. Paste it into **Settings → Bank feeds**.
+3. Choose which app account each Up account feeds, and the date to import from.
+
+How it works:
+- The token is checked with Up, stored encrypted (AES-256-GCM, with a key derived from `SESSION_SECRET`), and never sent back to a browser. **Changing `SESSION_SECRET` means connecting Up again.**
+- The server needs outgoing HTTPS to `api.up.com.au`, and nothing else.
+- Settled transactions sync every 30 minutes, or on demand with **Sync now**. Pending transactions import once they settle.
+- Each sync is an import batch, so the usual duplicate checks, bill matching and rules apply, and it can be undone from the Import page.
+
+### Folder import
+
+For banks without their own API, give an account a folder in **Settings → Bank feeds**. Then drop that bank's CSV exports into `inbox/<folder>/` on the server: by hand with `scp`, or automatically with Syncthing, a NAS share or a phone sync app. Every 5 minutes the backend:
+
+- imports new files with the account's saved column layout (do one import by hand on the Import page first, so it knows the columns);
+- moves each file to `imported/`, or to `failed/` with a `.error.txt` beside it saying why;
+- waits for files changed in the last 30 seconds, so half-copied files aren't read.
+
+Re-dropping a file you've already imported adds nothing.
+
 ## Trying it with demo data
 
 To look around before entering real data, set `SEED_DEMO=true` (and optionally `DEMO_PASSWORD`) in `.env` **before the first start**. The backend then creates `demo@example.com` with a year of realistic transactions, schedules, sinking funds, debts and goals. Without `DEMO_PASSWORD`, the password is printed in `docker compose logs backend`.
@@ -273,5 +305,6 @@ Rate limits and login logs use the client's IP address. The bundled nginx is alw
 - Logs exclude passwords, tokens and cookies. Logins, failed logins and password changes are logged.
 - Security updates install automatically (unattended-upgrades). Update the app with `git pull && docker compose up -d --build`.
 - Backups run nightly and are copied off the server.
+- Bank tokens are encrypted at rest, only ever sent to the bank's own API host, and can only read data.
 
 See [security.md](security.md) for the OWASP Top 10 review.

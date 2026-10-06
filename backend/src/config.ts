@@ -34,6 +34,8 @@ const EnvSchema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   JOBS_ENABLED: boolFromEnv(),
   /** Login, sign-up and invite attempts per minute per IP. Raise only for automated tests. */
+  /** Folder where bank CSVs dropped into per-account subfolders are imported automatically. Blank: off. */
+  IMPORT_INBOX_DIR: z.string().default(''),
   AUTH_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(10_000).default(5),
 });
 
@@ -56,6 +58,7 @@ export interface AppConfig {
   seedDemo: boolean;
   logLevel: string;
   jobsEnabled: boolean;
+  importInboxDir: string | null;
   rateLimits: { auth: number; api: number };
 }
 
@@ -120,6 +123,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     seedDemo: e.SEED_DEMO ?? false,
     logLevel: e.LOG_LEVEL,
     jobsEnabled: e.JOBS_ENABLED ?? e.NODE_ENV !== 'test',
+    importInboxDir: e.IMPORT_INBOX_DIR.trim() || null,
     rateLimits: { auth: e.AUTH_RATE_LIMIT_PER_MINUTE, api: 300 },
   };
 }
