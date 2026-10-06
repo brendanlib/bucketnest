@@ -152,6 +152,40 @@ sudo systemctl reload caddy
 
 Open `https://budget.example.com`, create your account, and you're running. Caddy sets `X-Forwarded-For` to the real client address, which is why `TRUST_PROXY=1` is correct.
 
+### Using nginx instead of Caddy
+
+If the server already runs nginx (or you prefer it), skip the Caddy install. Keep `APP_BIND=127.0.0.1` and `TRUST_PROXY=1` in `.env`.
+
+```bash
+sudo apt install -y nginx certbot python3-certbot-nginx
+sudo systemctl disable --now caddy 2>/dev/null || true   # only if Caddy was installed
+sudo tee /etc/nginx/sites-available/home-budget > /dev/null <<'EOF2'
+server {
+    listen 80;
+    listen [::]:80;
+    server_name budget.example.com;
+
+    # CSV imports send up to about 15 MB.
+    client_max_body_size 16m;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300s;
+    }
+}
+EOF2
+sudo ln -sf /etc/nginx/sites-available/home-budget /etc/nginx/sites-enabled/home-budget
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d budget.example.com --redirect --agree-tos -m you@example.com
+```
+
+Certbot adds the HTTPS server block and renews the certificate automatically. The app sends its own HSTS header over HTTPS, so nothing more is needed in nginx. For nginx on a different machine, see [Nginx Proxy Manager or Traefik on another machine](#nginx-proxy-manager-or-traefik-on-another-machine): the same applies, with `proxy_pass http://<vm-ip>:8080;`.
+
 ## 8. Nightly backups
 
 ```bash
