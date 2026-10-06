@@ -184,7 +184,7 @@ sudo nginx -t && sudo systemctl reload nginx
 sudo certbot --nginx -d budget.example.com --redirect --agree-tos -m you@example.com
 ```
 
-Certbot adds the HTTPS server block and renews the certificate automatically. The app sends its own HSTS header over HTTPS, so nothing more is needed in nginx. For nginx on a different machine, see [Nginx Proxy Manager or Traefik on another machine](#nginx-proxy-manager-or-traefik-on-another-machine): the same applies, with `proxy_pass http://<vm-ip>:8080;`.
+Certbot adds the HTTPS server block and renews the certificate automatically. The app sends its own HSTS header over HTTPS, so nothing more is needed in nginx. For nginx on a different machine, see [A reverse proxy on another machine](#a-reverse-proxy-on-another-machine-nginx-nginx-proxy-manager-traefik): the same applies, with `proxy_pass http://<vm-ip>:8080;`.
 
 ## 8. Nightly backups
 
@@ -287,12 +287,39 @@ docker compose --profile tunnel up -d --build
 
 Skip Caddy and the 80/443 firewall rules. Adding Cloudflare Access in front gives a second login layer.
 
-### Nginx Proxy Manager or Traefik on another machine
+### A reverse proxy on another machine (nginx, Nginx Proxy Manager, Traefik)
 
-Set `APP_BIND=0.0.0.0` and allow port 8080 from that machine only (`sudo ufw allow from <proxy-ip> to any port 8080`). Remember Docker bypasses ufw for published ports, so prefer a private network between the two.
+The proxy machine handles HTTPS and the public ports; the app VM only needs to be reachable from it.
 
-- **Nginx Proxy Manager:** a proxy host to `http://<vm-ip>:8080`, with SSL, Force SSL and HSTS on.
-- **Traefik:** remove `ports:` from `frontend`, join Traefik's network, and use the commented labels in `docker-compose.yml`.
+On the **app VM**, in `.env`:
+
+```env
+PUBLIC_URL=https://budget.example.com
+# The app VM's private IP, the one the proxy machine connects to:
+APP_BIND=192.168.1.20
+TRUST_PROXY=1
+```
+
+Then `docker compose up -d`. Docker-published ports **bypass ufw**, so a ufw rule can't limit who reaches port 8080. Binding to the private IP keeps it off any public interface. To allow only the proxy machine, add a rule to Docker's own firewall chain and keep it across reboots:
+
+```bash
+sudo iptables -I DOCKER-USER -p tcp -m conntrack --ctorigdstport 8080 ! -s 192.168.1.10 -j DROP   # 192.168.1.10 = the proxy machine
+sudo apt install -y iptables-persistent      # answer Yes to save the current rules
+sudo netfilter-persistent save
+```
+
+The app VM no longer needs ports 80 and 443 open (`sudo ufw delete allow 80/tcp && sudo ufw delete allow 443/tcp`).
+
+On the **proxy machine**:
+
+- Point the domain's DNS at the proxy machine, not the app VM.
+- Forward `https://budget.example.com` to `http://192.168.1.20:8080` with the `Host`, `X-Forwarded-For` and `X-Forwarded-Proto` headers and a body limit of at least 16 MB. For nginx, use the server block in [Using nginx instead of Caddy](#using-nginx-instead-of-caddy) with `proxy_pass http://192.168.1.20:8080;`. For Nginx Proxy Manager, add a proxy host with SSL, Force SSL and HSTS on, and `client_max_body_size 16m;` under Advanced.
+
+The proxy-to-app hop is plain HTTP, which is fine on a private network. Across the internet, put it inside a VPN such as WireGuard or Tailscale, and bind `APP_BIND` to the VPN address.
+
+`TRUST_PROXY` counts the proxies in front of the app: `1` for the proxy machine. With Cloudflare's proxied (orange-cloud) DNS in front as well, use `2`.
+
+**Traefik:** remove `ports:` from `frontend`, attach it to Traefik's network, and use the commented labels in `docker-compose.yml`.
 
 ### LAN only, no HTTPS
 
