@@ -22,6 +22,17 @@ describe('config', () => {
     expect(() => loadConfig({ ...base, ALLOW_REGISTRATION: 'maybe' })).toThrow(ConfigError);
   });
 
+  it('ignores a trailing comment that Docker Compose passed through as the value', () => {
+    // KEY=   # note  arrives as "# note" when the setting is blank.
+    expect(loadConfig({ ...base, ALLOW_REGISTRATION: '# blank = open only until the first user' }).allowRegistration).toBeUndefined();
+    expect(loadConfig({ ...base, COOKIE_SECURE: 'false   # plain-HTTP testing' }).cookieSecure).toBe(false);
+    expect(loadConfig({ ...base, TRUST_PROXY: '1 # one proxy' }).trustProxy).toBeTypeOf('function');
+    // Secrets are taken exactly as given.
+    expect(loadConfig({ ...base, SMTP_HOST: 'smtp.example.com', SMTP_PASS: 'p#ss word' }).smtp?.pass).toBe('p#ss word');
+    // And a bad value says what it got.
+    expect(() => loadConfig({ ...base, ALLOW_REGISTRATION: 'yes' })).toThrow(/ALLOW_REGISTRATION.*got "yes"/);
+  });
+
   it('derives cookie security and origin from PUBLIC_URL', () => {
     const https = loadConfig(base);
     expect(https.cookieSecure).toBe(true);

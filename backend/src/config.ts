@@ -84,11 +84,35 @@ function parseTrustProxy(value: string, internalHops: number): AppConfig['trustP
   return internalHops > 0 ? [...list, 'uniquelocal', 'loopback'] : list;
 }
 
+/**
+ * Settings that can never contain "#". Docker Compose keeps a trailing
+ * "# comment" as the value when the setting itself is blank (KEY=   # note),
+ * so comments are stripped from these. Secrets and URLs with credentials are
+ * left exactly as given.
+ */
+const COMMENT_SAFE = [
+  'NODE_ENV', 'PORT', 'HOST', 'PUBLIC_URL', 'TRUST_PROXY', 'INTERNAL_PROXY_HOPS', 'ALLOW_REGISTRATION', 'COOKIE_SECURE',
+  'DEFAULT_TIMEZONE', 'SESSION_IDLE_DAYS', 'SESSION_ABSOLUTE_DAYS', 'SMTP_HOST', 'SMTP_PORT', 'SEED_DEMO', 'LOG_LEVEL',
+  'JOBS_ENABLED', 'IMPORT_INBOX_DIR', 'AUTH_RATE_LIMIT_PER_MINUTE',
+];
+const stripComment = (v: string) => v.replace(/(^|\s+)#.*$/, '').trim();
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
-  const parsed = EnvSchema.safeParse(env);
+  const cleaned: NodeJS.ProcessEnv = { ...env };
+  for (const key of COMMENT_SAFE) {
+    const v = cleaned[key];
+    if (typeof v === 'string') cleaned[key] = stripComment(v);
+  }
+  const parsed = EnvSchema.safeParse(cleaned);
   if (!parsed.success) {
-    const problems = parsed.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`).join('\n');
-    throw new ConfigError(`Invalid configuration:\n${problems}`);
+    const problems = parsed.error.issues
+      .map((i) => {
+        const key = String(i.path[0] ?? '');
+        const got = typeof cleaned[key] === 'string' && key && !/SECRET|PASS|DATABASE_URL/.test(key) ? ` (got "${cleaned[key]}")` : '';
+        return `  ${i.path.join('.')}: ${i.message}${got}`;
+      })
+      .join('\n');
+    throw new ConfigError(`Invalid configuration in .env:\n${problems}`);
   }
   const e = parsed.data;
 
