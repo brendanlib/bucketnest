@@ -15,3 +15,7 @@ inbox/
 
 # The website lives in its own private repository (~/bucketnest-website).
 website/
+
+# The static demo build (see vite.config.ts) and its recorded snapshot.
+dist-static-demo/
+static-demo-fixtures.json

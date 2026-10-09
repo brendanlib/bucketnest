@@ -15,7 +15,7 @@ export function AuthCard({ title, children }: { title: string; children: React.R
     <div className="auth-wrap">
       <div className="card auth-card">
         <div className="brand">
-          <img src="/favicon.svg" alt="" width={32} height={32} />
+          <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width={32} height={32} />
           <span>{strings.appName}</span>
         </div>
         <h1 style={{ fontSize: '1.25rem', marginBottom: '1rem' }}>{title}</h1>

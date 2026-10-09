@@ -336,9 +336,9 @@ export function TransactionsPage() {
                   Add a transaction
                 </button>
               ) : (
-                <a className="btn primary" href="/accounts">
+                <Link className="btn primary" to="/accounts">
                   Add an account first
-                </a>
+                </Link>
               )
             }
           >

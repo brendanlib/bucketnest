@@ -46,6 +46,8 @@ const EnvSchema = z.object({
   /** The product website, linked from the demo. */
   WEBSITE_URL: z.url().default('https://bucketnest.org'),
   AUTH_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(10_000).default(5),
+  /** Requests per minute per signed-in user (or IP) for the rest of the API. */
+  API_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(100_000).default(300),
 });
 
 export interface AppConfig {
@@ -105,7 +107,7 @@ function parseTrustProxy(value: string, internalHops: number): AppConfig['trustP
 const COMMENT_SAFE = [
   'NODE_ENV', 'PORT', 'HOST', 'PUBLIC_URL', 'TRUST_PROXY', 'INTERNAL_PROXY_HOPS', 'ALLOW_REGISTRATION', 'COOKIE_SECURE',
   'DEFAULT_TIMEZONE', 'SESSION_IDLE_DAYS', 'SESSION_ABSOLUTE_DAYS', 'SMTP_HOST', 'SMTP_PORT', 'SEED_DEMO', 'LOG_LEVEL',
-  'JOBS_ENABLED', 'IMPORT_INBOX_DIR', 'AUTH_RATE_LIMIT_PER_MINUTE', 'DEMO_MODE', 'DEMO_TTL_HOURS', 'DEMO_MAX_ACTIVE',
+  'JOBS_ENABLED', 'IMPORT_INBOX_DIR', 'AUTH_RATE_LIMIT_PER_MINUTE', 'API_RATE_LIMIT_PER_MINUTE', 'DEMO_MODE', 'DEMO_TTL_HOURS', 'DEMO_MAX_ACTIVE',
 ];
 const stripComment = (v: string) => v.replace(/(^|\s+)#.*$/, '').trim();
 
@@ -164,6 +166,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     demo: { enabled: e.DEMO_MODE ?? false, ttlMs: e.DEMO_TTL_HOURS * 3_600_000, maxActive: e.DEMO_MAX_ACTIVE },
     sourceUrl: e.SOURCE_URL,
     websiteUrl: e.WEBSITE_URL,
-    rateLimits: { auth: e.AUTH_RATE_LIMIT_PER_MINUTE, api: 300 },
+    rateLimits: { auth: e.AUTH_RATE_LIMIT_PER_MINUTE, api: e.API_RATE_LIMIT_PER_MINUTE },
   };
 }

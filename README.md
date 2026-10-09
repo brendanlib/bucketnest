@@ -241,6 +241,17 @@ Give the demo its own server and database. Don't turn it on for an installation 
 
 To run it on the same machine as a real installation, use a separate folder whose `.env` sets `COMPOSE_PROJECT_NAME=bucketnest-demo`, plus its own `APP_PORT`, secrets and `PUBLIC_URL`. Before the first `docker compose up`, check that `docker compose config --format json | grep -m1 '"name"'` prints `bucketnest-demo`; otherwise it would share the real installation's database.
 
+### A read-only demo with no server
+
+The website's demo is the same frontend, built to answer the API in the browser from a recorded snapshot of a demo household ([frontend/src/static-demo](frontend/src/static-demo)). It's plain static files: every page and report works, and saving is switched off.
+
+1. Start any copy of the app with `DEMO_MODE=true` and `API_RATE_LIMIT_PER_MINUTE=100000` (the recorder makes a few thousand reads in a minute).
+2. Record the snapshot: `cd e2e && E2E_BASE_URL=http://localhost:8080 node scripts/record-static-demo.ts ../frontend/static-demo-fixtures.json`
+3. Build it: `cd frontend && STATIC_DEMO_FIXTURES=static-demo-fixtures.json npm run build:static-demo`. The files in `dist-static-demo/` are served from `/demo/app/` (change with `STATIC_DEMO_BASE`); unknown paths under it must return its `index.html`.
+4. Check it covers everything: `cd e2e && E2E_STATIC_DEMO_URL=http://localhost:4174/demo/app npx playwright test static-demo` (with `npx vite preview --mode static-demo --port 4174` running in `frontend`).
+
+The demo's clock starts at 8 pm on the day it was recorded, so re-record whenever you like; nothing else changes.
+
 ## Roadmap
 
 1. **Foundation** ✅ Docker Compose, schema, auth and security, buckets and categories, accounts, transactions, finance core.

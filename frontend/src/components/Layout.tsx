@@ -88,7 +88,7 @@ export function Layout() {
       </a>
       <aside className={`sidebar${collapsed ? ' collapsed' : ''}`} aria-label="Main navigation">
         <div className="brand">
-          <img src="/favicon.svg" alt="" />
+          <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" />
           <span className="brand-name">{strings.appName}</span>
         </div>
         <nav className="stack">

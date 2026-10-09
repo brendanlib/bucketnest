@@ -6,6 +6,7 @@ import { ApiError } from './api/client';
 import { App } from './App';
 import { ToastProvider } from './components/Toast';
 import { applyTheme, watchSystemTheme } from './lib/theme';
+import { ROUTER_BASENAME } from './lib/basePath';
 import './theme/global.css';
 
 applyTheme();
@@ -21,14 +22,23 @@ const queryClient = new QueryClient({
   },
 });
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <ToastProvider>
-          <App />
-        </ToastProvider>
-      </BrowserRouter>
-    </QueryClientProvider>
-  </StrictMode>,
-);
+async function start() {
+  // The website's read-only demo answers the API in the browser (see src/static-demo).
+  if (import.meta.env.VITE_STATIC_DEMO === 'true') {
+    const { installStaticDemo } = await import('./static-demo/install');
+    await installStaticDemo();
+  }
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter basename={ROUTER_BASENAME}>
+          <ToastProvider>
+            <App />
+          </ToastProvider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </StrictMode>,
+  );
+}
+
+void start();

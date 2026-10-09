@@ -26,6 +26,7 @@ import { NetWorthPage } from './features/NetWorthPage';
 import { CalendarPage } from './features/CalendarPage';
 import { InvitePage } from './features/InvitePage';
 import { DemoStart } from './features/DemoStart';
+import { appPath } from './lib/basePath';
 
 function RequireAuth() {
   const me = useMe();
@@ -48,7 +49,7 @@ export function App() {
   useEffect(() => {
     setUnauthenticatedHandler(() => {
       qc.removeQueries({ queryKey: keys.me });
-      if (!['/login', '/register', '/forgot-password', '/reset-password', '/invite', '/demo'].includes(window.location.pathname)) navigate('/login');
+      if (!['/login', '/register', '/forgot-password', '/reset-password', '/invite', '/demo'].includes(appPath())) navigate('/login');
     });
   }, [qc, navigate]);
 

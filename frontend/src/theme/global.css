@@ -82,6 +82,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .pos { color: var(--success); }
 .row { display: flex; gap: 0.75rem; align-items: center; }
 .row.wrap { flex-wrap: wrap; }
+/* On phones a row of controls wraps rather than pushing the page sideways. */
+@media (max-width: 600px) { .row, .card-header { flex-wrap: wrap; } }
 .spacer { flex: 1; }
 .stack { display: flex; flex-direction: column; gap: 1rem; }
 .stack-sm { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -267,8 +269,8 @@ table.table { width: 100%; border-collapse: collapse; }
 .mini-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem 1rem; margin: 0.25rem 0 0; }
 .mini-stats dt { color: var(--text-3); }
 .mini-stats dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
-.dash-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; }
-@media (max-width: 1000px) { .dash-grid { grid-template-columns: 1fr; } }
+.dash-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 1rem; }
+@media (max-width: 1000px) { .dash-grid { grid-template-columns: minmax(0, 1fr); } }
 .budget-table td, .budget-table th { padding: 0.45rem 0.6rem; }
 .budget-table .bucket-row td { background: var(--surface-2); font-weight: 700; border-top: 2px solid var(--border); }
 .budget-table .group-row td { font-weight: 600; color: var(--text-2); }
@@ -287,6 +289,8 @@ table.table { width: 100%; border-collapse: collapse; }
 .kv dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 
 .occurrence-actions { display: inline-flex; gap: 0.3rem; align-items: center; flex-wrap: nowrap; vertical-align: middle; }
+/* On a line of their own (the Recurring page’s "To record" list) they wrap in a narrow column. */
+.stack-sm > .occurrence-actions { display: flex; flex-wrap: wrap; }
 .bill-row { flex-wrap: wrap; }
 @media (max-width: 640px) {
   .bill-row .grow { flex-basis: 60%; }
