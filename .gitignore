@@ -12,3 +12,6 @@ test-results/
 
 # Folder import drop-off (bank files)
 inbox/
+
+# The website lives in its own private repository (~/bucketnest-website).
+website/

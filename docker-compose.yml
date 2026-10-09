@@ -1,6 +1,9 @@
 # BucketNest — docker compose up -d
 # Only the frontend is reachable from outside. Its nginx proxies /api to the backend.
 
+# Don't rename: the database volume is named after it (home-budget_pgdata), so a new
+# name starts an empty database. A second installation (like the demo) sets
+# COMPOSE_PROJECT_NAME in its own .env instead.
 name: home-budget
 
 services:

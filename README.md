@@ -239,6 +239,8 @@ BucketNest is free software under the [GNU Affero General Public License v3.0 or
 
 Give the demo its own server and database. Don't turn it on for an installation with real households.
 
+To run it on the same machine as a real installation, use a separate folder whose `.env` sets `COMPOSE_PROJECT_NAME=bucketnest-demo`, plus its own `APP_PORT`, secrets and `PUBLIC_URL`. Before the first `docker compose up`, check that `docker compose config --format json | grep -m1 '"name"'` prints `bucketnest-demo`; otherwise it would share the real installation's database.
+
 ## Roadmap
 
 1. **Foundation** ✅ Docker Compose, schema, auth and security, buckets and categories, accounts, transactions, finance core.
