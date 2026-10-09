@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Writes backups/budget-YYYYMMDD-HHMMSS.dump (pg_dump custom format, mode 600)
 # and keeps the newest BACKUP_RETENTION files. Exits non-zero on failure.
-#   cron: 0 2 * * * cd /opt/home-budget && ./scripts/backup.sh
+#   cron: 0 2 * * * cd /opt/bucketnest && ./scripts/backup.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

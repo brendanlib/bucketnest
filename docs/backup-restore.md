@@ -10,10 +10,10 @@
 - Keeps the newest `BACKUP_RETENTION` files (14 by default) and deletes older ones.
 - Exits non-zero on failure, so cron can email you.
 
-To run it nightly at 02:00, add this to the crontab of the user who owns `/opt/home-budget`:
+To run it nightly at 02:00, add this to the crontab of the user who owns `/opt/bucketnest`:
 
 ```cron
-0 2 * * * cd /opt/home-budget && ./scripts/backup.sh
+0 2 * * * cd /opt/bucketnest && ./scripts/backup.sh
 ```
 
 **Copy backups somewhere else** (another machine, a NAS, or cloud storage with `rclone` or `restic`). Backups that stay on the server's disk are lost with it.

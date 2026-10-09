@@ -1,4 +1,4 @@
-// Home Budget data model. See docs/data-model.md for the rules behind it.
+// BucketNest data model. See docs/data-model.md for the rules behind it.
 // Money is integer cents (BIGINT). Rates are NUMERIC. Dates without a time are DATE.
 // Every data record carries a non-null household_id.
 

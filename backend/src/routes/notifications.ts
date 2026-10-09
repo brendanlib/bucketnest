@@ -70,13 +70,13 @@ export const notificationRoutes =
           const body = await services.data.exportCsv(householdId, request.query.entity);
           return reply
             .type('text/csv; charset=utf-8')
-            .header('content-disposition', `attachment; filename="home-budget-${request.query.entity}-${stamp}.csv"`)
+            .header('content-disposition', `attachment; filename="bucketnest-${request.query.entity}-${stamp}.csv"`)
             .serializer((x: unknown) => x as string)
             .send(body);
         }
         const data = await services.data.exportJson(householdId);
         return reply
-          .header('content-disposition', `attachment; filename="home-budget-export-${stamp}.json"`)
+          .header('content-disposition', `attachment; filename="bucketnest-export-${stamp}.json"`)
           .serializer((x: unknown) => JSON.stringify(x, null, 2))
           .send(data);
       },

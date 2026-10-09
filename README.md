@@ -115,8 +115,8 @@ Household budgeting with the bucket method: your pay is shared across buckets (b
 You need Docker Engine with the Compose plugin.
 
 ```bash
-git clone <repository> /opt/home-budget
-cd /opt/home-budget
+git clone <repository> /opt/bucketnest
+cd /opt/bucketnest
 cp .env.example .env && chmod 600 .env
 sed -i "s|^SESSION_SECRET=.*|SESSION_SECRET=$(openssl rand -hex 32)|" .env
 sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(openssl rand -hex 24)|" .env
@@ -172,7 +172,7 @@ docker compose exec backend npm run disable-mfa -- you@example.com
 This writes `backups/budget-YYYYMMDD-HHMMSS.dump` (readable by your user only), keeps the newest `BACKUP_RETENTION` files, and exits non-zero on failure so cron can alert you. Run it nightly:
 
 ```cron
-0 2 * * * cd /opt/home-budget && ./scripts/backup.sh
+0 2 * * * cd /opt/bucketnest && ./scripts/backup.sh
 ```
 
 Copy backups off the server as well. A backup on the same disk won't survive the disk failing. The in-app export (Settings → Data) is useful for spreadsheets but doesn't replace these backups. Restore and test-restore steps are in [docs/backup-restore.md](docs/backup-restore.md).

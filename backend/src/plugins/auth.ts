@@ -14,6 +14,7 @@ declare module 'fastify' {
 export function cookieNames(config: AppConfig) {
   // The __Host- prefix pins the cookie to this exact host over HTTPS.
   const prefix = config.cookieSecure ? '__Host-' : '';
+  // "hb" is from the app's old name; renaming the cookies would sign everyone out.
   return { session: `${prefix}hb_session`, csrf: `${prefix}hb_csrf` };
 }
 

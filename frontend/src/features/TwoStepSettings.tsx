@@ -190,7 +190,7 @@ function RecoveryCodes({ codes, saved, onSaved, onDone }: { codes: string[]; sav
         ))}
       </ol>
       <div className="row wrap">
-        <a className="btn small" href={href} download="home-budget-recovery-codes.txt">
+        <a className="btn small" href={href} download="bucketnest-recovery-codes.txt">
           Download
         </a>
         <button

@@ -45,7 +45,8 @@ export function createDataService(deps: Deps, accounts: AccountService) {
       const d = await load(householdId);
       const cat = new Map(d.categories.map((c) => [c.id, c.name]));
       return {
-        format: 'home-budget-export',
+        // Exports made before the rename say 'home-budget-export'; the structure is the same.
+        format: 'bucketnest-export',
         version: 1,
         exportedAt: deps.now().toISOString(),
         note: 'Money amounts are integer cents. Dates are YYYY-MM-DD.',

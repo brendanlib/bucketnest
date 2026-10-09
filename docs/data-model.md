@@ -240,7 +240,7 @@ Each schedule's occurrences (posted ones link to their transaction), sinking fun
 
 ## Export and deletion
 
-- **JSON:** `GET /api/export?format=json` returns `{ format: "home-budget-export", version: 1, … }` with every record in the household. Money is in integer cents. Password hashes, sessions and reset tokens are never included.
+- **JSON:** `GET /api/export?format=json` returns `{ format: "bucketnest-export", version: 1, … }` (exports made before the rename say `home-budget-export`; same structure) with every record in the household. Money is in integer cents. Password hashes, sessions and reset tokens are never included.
 - **CSV:** `GET /api/export?format=csv&entity=…` for transactions (one row per split), accounts, categories, budget, recurring, sinking-funds, goals, debts, assets and rules. These use the same CSV rules as reports.
 - **Deleting a household:** owner only. The owner must type the household name exactly and enter their password. Everything in the household is deleted (cascade). Users left with no household membership are deleted too.
 

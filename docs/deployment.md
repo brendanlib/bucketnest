@@ -1,6 +1,6 @@
 # Deploying on an Ubuntu server
 
-This guide takes a fresh Ubuntu 24.04 LTS virtual machine to a running Home Budget at `https://budget.example.com`, with automatic HTTPS, a firewall and nightly backups. Allow about 30 minutes.
+This guide takes a fresh Ubuntu 24.04 LTS virtual machine to a running BucketNest at `https://budget.example.com`, with automatic HTTPS, a firewall and nightly backups. Allow about 30 minutes.
 
 The app runs as three containers. Only `frontend` is published, and Caddy on the host puts HTTPS in front of it:
 
@@ -70,26 +70,26 @@ docker compose version
 
 ## 4. Get the code onto the server
 
-Push the project to a **private** Git repository (GitHub, GitLab, Gitea…) and clone it:
+> **Already running it from `/opt/home-budget`?** Keep that folder. Only the paths in these docs changed with the rename to BucketNest. Your installation, its database and its backup cron line don't need to move.
+
+Clone it from GitHub:
 
 ```bash
-sudo mkdir -p /opt/home-budget && sudo chown "$USER": /opt/home-budget
-git clone git@github.com:you/home-budget.git /opt/home-budget
+sudo mkdir -p /opt/bucketnest && sudo chown "$USER": /opt/bucketnest
+git clone https://github.com/bucketnest/bucketnest.git /opt/bucketnest
 ```
 
-For a private GitHub repository, add the VM's SSH key as a read-only deploy key first (`ssh-keygen -t ed25519`, then paste `~/.ssh/id_ed25519.pub` into the repository's Settings → Deploy keys).
-
-No Git remote? Copy the folder from your computer instead:
+Running your own modified copy? Clone your fork instead, or copy the folder from your computer:
 
 ```bash
-rsync -av --exclude node_modules --exclude dist --exclude .env --exclude backups \
-  ~/home-budget/ you@your-vm:/opt/home-budget/
+rsync -av --exclude node_modules --exclude dist --exclude .env --exclude backups --exclude inbox \
+  ~/bucketnest/ you@your-vm:/opt/bucketnest/
 ```
 
 ## 5. Configure
 
 ```bash
-cd /opt/home-budget
+cd /opt/bucketnest
 cp .env.example .env
 chmod 600 .env
 sed -i "s|^SESSION_SECRET=.*|SESSION_SECRET=$(openssl rand -hex 32)|" .env
@@ -159,7 +159,7 @@ If the server already runs nginx (or you prefer it), skip the Caddy install. Kee
 ```bash
 sudo apt install -y nginx certbot python3-certbot-nginx
 sudo systemctl disable --now caddy 2>/dev/null || true   # only if Caddy was installed
-sudo tee /etc/nginx/sites-available/home-budget > /dev/null <<'EOF2'
+sudo tee /etc/nginx/sites-available/bucketnest > /dev/null <<'EOF2'
 server {
     listen 80;
     listen [::]:80;
@@ -179,7 +179,7 @@ server {
     }
 }
 EOF2
-sudo ln -sf /etc/nginx/sites-available/home-budget /etc/nginx/sites-enabled/home-budget
+sudo ln -sf /etc/nginx/sites-available/bucketnest /etc/nginx/sites-enabled/bucketnest
 sudo nginx -t && sudo systemctl reload nginx
 sudo certbot --nginx -d budget.example.com --redirect --agree-tos -m you@example.com
 ```
@@ -189,7 +189,7 @@ Certbot adds the HTTPS server block and renews the certificate automatically. Th
 ## 8. Nightly backups
 
 ```bash
-cd /opt/home-budget
+cd /opt/bucketnest
 ./scripts/backup.sh && ls -l backups/     # check one works
 crontab -e
 ```
@@ -197,13 +197,13 @@ crontab -e
 Add:
 
 ```cron
-0 2 * * * cd /opt/home-budget && ./scripts/backup.sh >> backups/backup.log 2>&1
+0 2 * * * cd /opt/bucketnest && ./scripts/backup.sh >> backups/backup.log 2>&1
 ```
 
 **Copy backups off the VM.** A backup on the same disk won't survive losing the VM. For example, pull them nightly from another machine:
 
 ```bash
-rsync -av you@your-vm:/opt/home-budget/backups/ ~/home-budget-backups/
+rsync -av you@your-vm:/opt/bucketnest/backups/ ~/bucketnest-backups/
 ```
 
 Test a restore now and then. See [backup-restore.md](backup-restore.md).
@@ -211,7 +211,7 @@ Test a restore now and then. See [backup-restore.md](backup-restore.md).
 ## Updating
 
 ```bash
-cd /opt/home-budget
+cd /opt/bucketnest
 ./scripts/backup.sh
 git pull
 docker compose up -d --build
@@ -222,14 +222,14 @@ docker image prune -f      # remove the old images
 
 Email is optional. Without it, password resets use the command line (`docker compose exec backend npm run reset-password -- you@example.com`) and alerts are in-app only.
 
-The server sends from **one address** for everyone (for example `Home Budget <budget@example.com>`). Each person receives mail at their own login email. Use a transactional email service (Postmark, Amazon SES, Mailgun, Brevo, Resend…) or your own mail provider's SMTP, with the domain verified (SPF and DKIM) so messages don't land in spam:
+The server sends from **one address** for everyone (for example `BucketNest <budget@example.com>`). Each person receives mail at their own login email. Use a transactional email service (Postmark, Amazon SES, Mailgun, Brevo, Resend…) or your own mail provider's SMTP, with the domain verified (SPF and DKIM) so messages don't land in spam:
 
 ```env
 SMTP_HOST=smtp.postmarkapp.com
 SMTP_PORT=587
 SMTP_USER=<from the provider>
 SMTP_PASS=<from the provider>
-SMTP_FROM=Home Budget <budget@example.com>
+SMTP_FROM=BucketNest <budget@example.com>
 ```
 
 Port 465 uses TLS from the start; port 587 upgrades with STARTTLS. Apply the change with `docker compose up -d`. Many cloud providers block outgoing port 25, so use 587 or 465.

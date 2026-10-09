@@ -148,9 +148,9 @@ describe('data export and deletion (spec §14)', () => {
     await client.post('/api/transactions', { date: '2026-10-02', description: 'Shop', amountCents: 4200, type: 'EXPENSE', accountId: main.id, splits: [{ categoryId: await categoryId(client, 'Groceries'), amountCents: 4200 }] });
     const res = await client.get('/api/export');
     expect(res.status).toBe(200);
-    expect(res.headers['content-disposition']).toMatch(/home-budget-export-.*\.json/);
+    expect(res.headers['content-disposition']).toMatch(/bucketnest-export-.*\.json/);
     const data = res.body;
-    expect(data).toMatchObject({ format: 'home-budget-export', version: 1, household: { currency: 'AUD' } });
+    expect(data).toMatchObject({ format: 'bucketnest-export', version: 1, household: { currency: 'AUD' } });
     expect(data.accounts[0]).toMatchObject({ name: 'Main', balanceCents: 995800 });
     expect(data.transactions[0].splits[0]).toMatchObject({ category: 'Groceries', amountCents: 4200 });
     expect(data.buckets).toHaveLength(4);

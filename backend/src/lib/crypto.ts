@@ -21,6 +21,8 @@ export function safeEqual(a: string, b: string): boolean {
  * reconnecting banks. Output: v1.<iv>.<tag>.<ciphertext>, base64url.
  */
 function secretKey(secret: string, purpose: string): Buffer {
+  // 'home-budget' (the app's old name) is part of the key. Don't rename it: stored Up tokens and
+  // two-step secrets would no longer decrypt.
   return Buffer.from(hkdfSync('sha256', secret, 'home-budget', `secretbox:${purpose}`, 32));
 }
 
