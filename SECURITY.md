@@ -5,7 +5,7 @@ BucketNest holds people's financial records, so security reports get priority.
 ## Reporting a vulnerability
 
 Please **don't** open a public issue. Instead, report it privately through
-[GitHub security advisories](https://github.com/bucketnest/bucketnest/security/advisories/new),
+[GitHub security advisories](https://github.com/brendanlib/bucketnest/security/advisories/new),
 or email **security@bucketnest.org**.
 
 Include what you found, how to reproduce it, and what an attacker could do with it. You'll get

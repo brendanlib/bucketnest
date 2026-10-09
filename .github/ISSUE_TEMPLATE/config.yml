@@ -1,7 +1,7 @@
 blank_issues_enabled: false
 contact_links:
   - name: Report a security problem
-    url: https://github.com/bucketnest/bucketnest/security/advisories/new
+    url: https://github.com/brendanlib/bucketnest/security/advisories/new
     about: Privately, so it can be fixed before it's public.
   - name: No GitHub account? Use the website
     url: https://bucketnest.org/feedback

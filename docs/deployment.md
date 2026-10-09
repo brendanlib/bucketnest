@@ -76,7 +76,7 @@ Clone it from GitHub:
 
 ```bash
 sudo mkdir -p /opt/bucketnest && sudo chown "$USER": /opt/bucketnest
-git clone https://github.com/bucketnest/bucketnest.git /opt/bucketnest
+git clone https://github.com/brendanlib/bucketnest.git /opt/bucketnest
 ```
 
 Running your own modified copy? Clone your fork instead, or copy the folder from your computer:

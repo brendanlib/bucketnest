@@ -54,7 +54,7 @@ services:
       DEMO_MODE: ${DEMO_MODE:-false}
       DEMO_TTL_HOURS: ${DEMO_TTL_HOURS:-24}
       DEMO_MAX_ACTIVE: ${DEMO_MAX_ACTIVE:-300}
-      SOURCE_URL: ${SOURCE_URL:-https://github.com/bucketnest/bucketnest}
+      SOURCE_URL: ${SOURCE_URL:-https://github.com/brendanlib/bucketnest}
       # Folder import: CSVs dropped into ./inbox/<account folder>/ import themselves.
       IMPORT_INBOX_DIR: /data/inbox
     volumes:
