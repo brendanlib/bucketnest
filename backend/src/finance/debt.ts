@@ -170,7 +170,7 @@ export interface PlanResult {
 /**
  * Payoff order across debts, simulated monthly (spec §10). Every debt gets its
  * minimum; the extra goes to the target debt — smallest balance first
- * (snowball, the Barefoot "domino") or highest rate first (avalanche). When a
+ * (snowball, the "domino" effect) or highest rate first (avalanche). When a
  * debt is cleared, its repayment rolls into the next.
  */
 export function simulatePayoffPlan(debts: PlanDebt[], strategy: 'SNOWBALL' | 'AVALANCHE', extraMonthlyCents: Cents, today: DateOnly): PlanResult {

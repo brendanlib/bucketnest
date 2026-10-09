@@ -7,6 +7,8 @@ import type { Me } from '../api/types';
 import { Field } from '../components/Field';
 import { FormError } from '../components/States';
 import { pendingInvite } from '../lib/invite';
+import { strings } from '../locales/en-AU';
+import { SourceLink } from '../components/SourceLink';
 
 export function AuthCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -14,11 +16,12 @@ export function AuthCard({ title, children }: { title: string; children: React.R
       <div className="card auth-card">
         <div className="brand">
           <img src="/favicon.svg" alt="" width={32} height={32} />
-          <span>Home Budget</span>
+          <span>{strings.appName}</span>
         </div>
         <h1 style={{ fontSize: '1.25rem', marginBottom: '1rem' }}>{title}</h1>
         {children}
       </div>
+      <SourceLink />
     </div>
   );
 }
@@ -34,6 +37,7 @@ export function LoginPage() {
   const [busy, setBusy] = useState(false);
   /** Set once the password is accepted and a two-step code is needed. */
   const [challenge, setChallenge] = useState<string | null>(null);
+  const [showLogin, setShowLogin] = useState(false);
   const qc = useQueryClient();
   const navigate = useNavigate();
   const registration = useRegistration();
@@ -70,6 +74,22 @@ export function LoginPage() {
           setError(err);
         }}
       />
+    );
+  }
+
+  if (registration.data?.demo && !showLogin) {
+    return (
+      <AuthCard title={`Try ${strings.appName}`}>
+        <div className="stack">
+          <p>You’ll get your own sample household with a year of realistic data: pay, bills, spending, savings goals and debts. Change anything you like; nobody else sees it, and it’s deleted after 24 hours.</p>
+          <Link to="/demo" className="btn primary">
+            Start the demo
+          </Link>
+          <button type="button" className="link-btn small" onClick={() => setShowLogin(true)}>
+            I have an account on this server
+          </button>
+        </div>
+      </AuthCard>
     );
   }
 
@@ -121,7 +141,7 @@ function TwoStepForm({ challenge, onSignedIn, onExpired }: { challenge: string; 
   return (
     <AuthCard title="Two-step sign-in">
       <form className="stack" onSubmit={submit} noValidate>
-        <p className="muted">{recovery ? 'Enter one of the recovery codes you saved when you turned on two-step sign-in. Each works once.' : 'Open your authenticator app and enter the 6-digit code for Home Budget.'}</p>
+        <p className="muted">{recovery ? 'Enter one of the recovery codes you saved when you turned on two-step sign-in. Each works once.' : 'Open your authenticator app and enter the 6-digit code for BucketNest.'}</p>
         <FormError error={error} />
         {recovery ? (
           <Field label="Recovery code" hint="Like k7m2-x9qp.">

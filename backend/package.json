@@ -1,5 +1,5 @@
 {
-  "name": "home-budget-backend",
+  "name": "bucketnest-backend",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -57,5 +57,6 @@
   },
   "overrides": {
     "deepmerge-ts": "^8.0.2"
-  }
+  },
+  "license": "AGPL-3.0-or-later"
 }

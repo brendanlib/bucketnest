@@ -1,4 +1,4 @@
-# Home Budget — docker compose up -d
+# BucketNest — docker compose up -d
 # Only the frontend is reachable from outside. Its nginx proxies /api to the backend.
 
 name: home-budget
@@ -48,6 +48,10 @@ services:
       DEMO_PASSWORD: ${DEMO_PASSWORD:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       AUTH_RATE_LIMIT_PER_MINUTE: ${AUTH_RATE_LIMIT_PER_MINUTE:-5}
+      DEMO_MODE: ${DEMO_MODE:-false}
+      DEMO_TTL_HOURS: ${DEMO_TTL_HOURS:-24}
+      DEMO_MAX_ACTIVE: ${DEMO_MAX_ACTIVE:-300}
+      SOURCE_URL: ${SOURCE_URL:-https://github.com/bucketnest/bucketnest}
       # Folder import: CSVs dropped into ./inbox/<account folder>/ import themselves.
       IMPORT_INBOX_DIR: /data/inbox
     volumes:

@@ -29,12 +29,17 @@ import { reportRoutes } from './routes/reports.js';
 import { notificationRoutes } from './routes/notifications.js';
 import { memberRoutes } from './routes/members.js';
 import { bankFeedRoutes } from './routes/bankfeeds.js';
+import { demoRoutes } from './routes/demo.js';
+import { createDemoService, DEMO_BLOCKED } from './services/demo.service.js';
+import type { DemoService } from './services/demo.service.js';
+import { forbidden } from './lib/errors.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
     deps: Deps;
     services: Services;
     authThrottle: AttemptThrottle;
+    demo: DemoService;
   }
 }
 
@@ -78,6 +83,17 @@ export async function buildApp(opts: BuildOptions): Promise<FastifyInstance> {
   app.decorate('services', services);
   app.decorate('authThrottle', throttle);
 
+  app.decorate('demo', createDemoService(app));
+  // On the public demo, refuse what reaches outside a visitor's sandbox (before any route runs).
+  if (config.demo.enabled) {
+    app.addHook('onRequest', async (request) => {
+      const path = request.url.split('?')[0]!;
+      if (DEMO_BLOCKED.some(([m, re]) => m === request.method && re.test(path))) {
+        throw forbidden('DEMO_DISABLED', 'That isn’t available in the demo. Download BucketNest or join the hosted waitlist to use it.');
+      }
+    });
+  }
+
   await app.register(cookie);
   registerAuth(app, config, services.auth);
   await registerSecurity(app, config);
@@ -89,6 +105,7 @@ export async function buildApp(opts: BuildOptions): Promise<FastifyInstance> {
       await api.register(authRoutes(services, config, throttle));
       // Invite lookup and sign-up work before login; the rest of this plugin requires it.
       await api.register(memberRoutes(services, config));
+      if (config.demo.enabled) await api.register(demoRoutes(services, app.demo, config));
       await api.register(async (protectedApi) => {
         protectedApi.addHook('onRequest', requireAuth);
         await protectedApi.register(settingsRoutes(services));

@@ -2,7 +2,7 @@ import type { AccountType, TransactionType } from '../api/types';
 
 /** All user-facing labels for terms that vary by country. Another locale file can relabel them. */
 export const strings = {
-  appName: 'Home Budget',
+  appName: 'BucketNest',
   accountTypes: {
     TRANSACTION: 'Transaction',
     SAVINGS: 'Savings',

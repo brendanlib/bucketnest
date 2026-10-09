@@ -37,7 +37,7 @@ describe('TOTP', () => {
   });
 
   it('builds the otpauth link and readable recovery codes', () => {
-    expect(otpauthUri('ABC', 'sam@example.com')).toBe('otpauth://totp/Home%20Budget%3Asam%40example.com?secret=ABC&issuer=Home+Budget&algorithm=SHA1&digits=6&period=30');
+    expect(otpauthUri('ABC', 'sam@example.com')).toBe('otpauth://totp/BucketNest%3Asam%40example.com?secret=ABC&issuer=BucketNest&algorithm=SHA1&digits=6&period=30');
     const codes = newRecoveryCodes();
     expect(codes).toHaveLength(10);
     expect(new Set(codes).size).toBe(10);

@@ -81,7 +81,7 @@ describe('household invites', () => {
   it('can be limited to one email, and emails the link when SMTP is set up', async () => {
     const { link, emailed } = await invite({ email: 'Sam@Example.com' });
     expect(emailed).toBe(true);
-    expect(mailer.sent).toEqual([expect.objectContaining({ to: 'sam@example.com', subject: "Alex invited you to Alex's household on Home Budget" })]);
+    expect(mailer.sent).toEqual([expect.objectContaining({ to: 'sam@example.com', subject: "Alex invited you to Alex's household on BucketNest" })]);
     expect(mailer.sent[0]!.text).toContain(link);
     expect((await new Client(app).post('/api/invites/lookup', { token: tokenOf(link) })).body).toMatchObject({ email: 'sam@example.com', hasAccount: false });
 

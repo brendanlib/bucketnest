@@ -5,6 +5,7 @@ import { AppError, badRequest, conflict, forbidden, notFound, unauthorized, vali
 import { hmac, randomToken } from '../lib/crypto.js';
 import { dummyPasswordHash, hashPassword, passwordProblem, verifyPassword } from '../lib/password.js';
 import { dateInTimeZone, dateOnlyToDb, isValidTimeZone } from '../finance/dates.js';
+import { APP_NAME } from '../lib/brand.js';
 
 const RESET_TOKEN_TTL_MS = 30 * 60_000;
 /** Write last_seen_at at most this often, so every request is not a write. */
@@ -92,7 +93,7 @@ export function createAuthService(deps: Deps) {
         if (await repo.findUserByEmail(tx, email)) {
           throw conflict('EMAIL_TAKEN', 'An account with this email already exists');
         }
-        const created = await repo.createUser(tx, { email, name: input.name.trim(), passwordHash });
+        const created = await repo.createUser(tx, { email, name: input.name.trim(), passwordHash, createdAt: deps.now() });
         await createHouseholdWithDefaults(tx, {
           name: `${input.name.trim()}'s household`,
           ownerUserId: created.id,
@@ -199,7 +200,7 @@ export function createAuthService(deps: Deps) {
       void deps.mailer
         .send({
           to: user.email,
-          subject: 'Reset your Home Budget password',
+          subject: `Reset your ${APP_NAME} password`,
           text: `Hi ${user.name},\n\nUse this link within 30 minutes to choose a new password:\n\n${link}\n\nIf you did not ask for this, ignore this email.`,
         })
         .then(

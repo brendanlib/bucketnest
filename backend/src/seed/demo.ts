@@ -51,17 +51,19 @@ export interface DemoResult {
   password: string;
   householdId: string;
   transactions: number;
+  userId: string;
 }
 
 export async function demoExists(app: FastifyInstance): Promise<boolean> {
   return (await app.deps.db.user.count({ where: { email: DEMO_EMAIL } })) > 0;
 }
 
-export async function seedDemo(app: FastifyInstance, opts: { password?: string } = {}): Promise<DemoResult> {
+export async function seedDemo(app: FastifyInstance, opts: { password?: string; email?: string; name?: string } = {}): Promise<DemoResult> {
   const { config } = app.deps;
   const password = opts.password ?? generatePassword();
+  const email = opts.email ?? DEMO_EMAIL;
   const { user, session } = await app.services.auth.register(
-    { email: DEMO_EMAIL, name: 'Sam Demo', password, timezone: config.defaultTimezone, userAgent: 'demo seed' },
+    { email, name: opts.name ?? 'Sam Demo', password, timezone: config.defaultTimezone, userAgent: 'demo seed' },
     { ignoreRegistrationSwitch: true },
   );
 
@@ -265,5 +267,5 @@ export async function seedDemo(app: FastifyInstance, opts: { password?: string }
   }
 
   app.log.info({ userId: user.id, transactions: count }, 'demo household created');
-  return { email: DEMO_EMAIL, password, householdId: settings.id, transactions: count };
+  return { email, password, householdId: settings.id, transactions: count, userId: user.id };
 }

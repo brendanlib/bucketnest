@@ -1,8 +1,10 @@
-# Home Budget
+# BucketNest
 
-A self-hosted household budget app built on the Barefoot Investor bucket method: Bills, Smile, Splurge and Fire Extinguisher. It runs on your own server with `docker compose up -d` and keeps everything in PostgreSQL.
+Household budgeting with the bucket method: your pay is shared across buckets (bills, fun, splurges, savings), and every dollar has a job. Free and open source. Run it on your own server with `docker compose up -d`, or use the hosted service.
 
-> **Build status: all six phases complete, plus household invites.** See [Roadmap](#roadmap).
+**[Try the live demo](https://demo.bucketnest.org/demo)** · **[Website](https://bucketnest.org)** · **[Report a bug or suggest a feature](https://bucketnest.org/feedback)**
+
+> The bucket method was popularised by Scott Pape's book *The Barefoot Investor*. BucketNest is an independent project and isn't affiliated with or endorsed by The Barefoot Investor.
 
 ## What works now
 
@@ -222,6 +224,20 @@ e2e/       Playwright smoke tests
 scripts/   backup.sh, restore.sh
 docs/      deployment (Ubuntu), backup and restore, data model, security review
 ```
+
+## Licence
+
+BucketNest is free software under the [GNU Affero General Public License v3.0 or later](LICENSE). You can use, change and share it. If you run a modified copy as a service for other people, you must offer them its source code; the app links to it from the sign-in page and the menu (`SOURCE_URL`).
+
+## Running a public demo
+
+`DEMO_MODE=true` turns a server into a demo:
+
+- Each visitor gets their own sample household at `/demo`, with a year of data, deleted after `DEMO_TTL_HOURS` (default 24).
+- At most `DEMO_MAX_ACTIVE` (default 300) run at once, and each IP can start 5 an hour.
+- Sign-ups, email, bank feeds, folder import, invites, two-step setup and password changes are off.
+
+Give the demo its own server and database. Don't turn it on for an installation with real households.
 
 ## Roadmap
 

@@ -1,0 +1,49 @@
+name: Bug report
+description: Something in BucketNest isn't working as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. **Please don't include real financial data, account numbers or passwords.**
+        Security problems go to the private channel in SECURITY.md, not here.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to Budget
+        2. Click …
+        3. See …
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where are you running it?
+      options:
+        - Self-hosted (Docker)
+        - The online demo
+        - Hosted service
+        - Development checkout
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: e.g. 1.2.0 or 1f494e9
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and device
+      placeholder: e.g. Safari on iPhone 15, Chrome 130 on Windows
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: "`docker compose logs backend --tail=100`, with anything private removed."
+      render: text

@@ -45,7 +45,7 @@ describe('TOTP two-step sign-in', () => {
     const setup = await client.post('/api/auth/mfa/setup', { password: PASSWORD });
     expect(setup.body.secret).toMatch(/^[A-Z2-7]{32}$/);
     expect(setup.body.otpauthUri).toContain(`secret=${setup.body.secret}`);
-    expect(setup.body.otpauthUri).toContain('issuer=Home+Budget');
+    expect(setup.body.otpauthUri).toContain('issuer=BucketNest');
     secret = setup.body.secret;
     // Still off until a code confirms it.
     expect((await passwordStep()).res.body.household).toBeDefined();

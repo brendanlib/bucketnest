@@ -3,7 +3,7 @@ export type BucketKey = string;
 export type BucketRole = 'BILLS' | 'SAVING' | 'SPENDING';
 
 export interface Me {
-  user: { id: string; email: string; name: string; dismissedTips: string[] };
+  user: { id: string; email: string; name: string; dismissedTips: string[]; isDemo: boolean };
   households: { id: string; name: string; role: 'OWNER' | 'MEMBER' }[];
   household: { id: string; name: string; role: 'OWNER' | 'MEMBER'; currency: string; locale: string; timezone: string };
 }
@@ -768,4 +768,13 @@ export interface BankConnection {
 export interface ImportInbox {
   enabled: boolean;
   accounts: { accountId: string; accountName: string; folder: string | null; hasLayout: boolean; imported: string[]; failed: string[] }[];
+}
+
+/** What the sign-in pages know about this server before anyone signs in. */
+export interface ServerInfo {
+  open: boolean;
+  passwordReset: 'email' | 'cli';
+  demo: boolean;
+  sourceUrl: string;
+  websiteUrl: string;
 }

@@ -60,7 +60,7 @@ export function FireExtinguisherPage() {
         }
       />
       <PageTip id="fire-extinguisher" title={`The ${names.saving} bucket`}>
-        {withBucketNames('Barefoot’s order: build an emergency fund first, then pay down debt, then invest. Put your goals in that order — the top one gets spare Fire Extinguisher money first.', names)}
+        {withBucketNames('The bucket method’s order: build an emergency fund first, then pay down debt, then invest. Put your goals in that order — the top one gets spare Fire Extinguisher money first.', names)}
       </PageTip>
       <section className="stack" aria-labelledby="goals-h">
         <h2 id="goals-h">Goals</h2>
@@ -74,7 +74,7 @@ export function FireExtinguisherPage() {
                 </button>
               }
             >
-              The Barefoot approach: an emergency fund of a few months’ expenses, then attack debt, then invest.
+              The bucket method’s approach: an emergency fund of a few months’ expenses, then attack debt, then invest.
             </EmptyState>
           </div>
         ) : (

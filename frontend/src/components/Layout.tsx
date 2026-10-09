@@ -9,6 +9,9 @@ import { Modal } from './Modal';
 import { NotificationBell } from './NotificationBell';
 import { HouseholdSwitcher } from './HouseholdSwitcher';
 import { useBucketNames } from '../lib/bucketNames';
+import { strings } from '../locales/en-AU';
+import { SourceLink } from './SourceLink';
+import { DemoBanner } from './DemoBanner';
 
 interface NavItem {
   to: string;
@@ -86,7 +89,7 @@ export function Layout() {
       <aside className={`sidebar${collapsed ? ' collapsed' : ''}`} aria-label="Main navigation">
         <div className="brand">
           <img src="/favicon.svg" alt="" />
-          <span className="brand-name">Home Budget</span>
+          <span className="brand-name">{strings.appName}</span>
         </div>
         <nav className="stack">
           {NAV.map((g) => (
@@ -102,6 +105,7 @@ export function Layout() {
           ))}
         </nav>
         <span className="spacer" />
+        {!collapsed ? <SourceLink className="source-link sidebar-source" /> : null}
         <button
           type="button"
           className="nav-link btn ghost"
@@ -127,6 +131,7 @@ export function Layout() {
           </button>
         </header>
         <main id="main" className="content">
+          <DemoBanner />
           <Outlet />
         </main>
       </div>
@@ -158,6 +163,7 @@ export function Layout() {
               Log out
             </button>
           </nav>
+          <SourceLink />
         </Modal>
       ) : null}
     </div>

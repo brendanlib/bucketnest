@@ -180,7 +180,7 @@ function PlanCard() {
           </button>
         </div>
       </div>
-      <p className="muted small">Every debt gets its minimum; the extra goes to the first debt in line. When it’s cleared, its repayment rolls into the next — the Barefoot “domino”.</p>
+      <p className="muted small">Every debt gets its minimum; the extra goes to the first debt in line. When it’s cleared, its repayment rolls into the next, like dominoes.</p>
       <div style={{ maxWidth: 260 }}>
         <Field label="Extra each month" hint="Defaults to the extras set on your debts.">
           {(p) => <MoneyInput {...p} value={extra ?? plan.data?.extraMonthlyCents ?? null} onChange={setExtra} />}

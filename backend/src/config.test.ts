@@ -62,7 +62,7 @@ describe('config', () => {
 
   it('enables SMTP only when a host is set', () => {
     expect(loadConfig(base).smtp).toBeNull();
-    expect(loadConfig({ ...base, SMTP_HOST: 'smtp.example.com' }).smtp).toMatchObject({ host: 'smtp.example.com', port: 587, from: 'Home Budget <no-reply@budget.example.com>' });
+    expect(loadConfig({ ...base, SMTP_HOST: 'smtp.example.com' }).smtp).toMatchObject({ host: 'smtp.example.com', port: 587, from: 'BucketNest <no-reply@budget.example.com>' });
   });
 
   it('rejects an invalid default time zone', () => {

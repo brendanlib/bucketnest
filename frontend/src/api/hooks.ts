@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { api, qs } from './client';
-import type { BankConnection, ImportInbox, HouseholdMembers, AppNotification, NotificationSetting, Asset, BudgetActualReport, CalendarItem, DebtReductionItem, ForecastReport, IncomeReport, NetWorthReport, SpendingReport, Onboarding, Account, BalanceHistory, Bucket, Budget, BudgetSummary, Category, Dashboard, Debt, Goal, ImportBatch, Me, Occurrence, Page, PayoffComparison, PayoffPlan, Recurring, Rule, SessionInfo, Settings, SinkingFund, Transaction } from './types';
+import type { ServerInfo, BankConnection, ImportInbox, HouseholdMembers, AppNotification, NotificationSetting, Asset, BudgetActualReport, CalendarItem, DebtReductionItem, ForecastReport, IncomeReport, NetWorthReport, SpendingReport, Onboarding, Account, BalanceHistory, Bucket, Budget, BudgetSummary, Category, Dashboard, Debt, Goal, ImportBatch, Me, Occurrence, Page, PayoffComparison, PayoffPlan, Recurring, Rule, SessionInfo, Settings, SinkingFund, Transaction } from './types';
 
 export const keys = {
   me: ['me'] as const,
@@ -22,7 +22,7 @@ export const keys = {
 
 export const useMe = () => useQuery({ queryKey: keys.me, queryFn: () => api.get<Me>('/auth/me'), retry: false, staleTime: 60_000 });
 export const useRegistration = () =>
-  useQuery({ queryKey: keys.registration, queryFn: () => api.get<{ open: boolean; passwordReset: 'email' | 'cli' }>('/auth/registration') });
+  useQuery({ queryKey: keys.registration, queryFn: () => api.get<ServerInfo>('/auth/registration'), staleTime: 5 * 60_000 });
 export const useSettings = () => useQuery({ queryKey: keys.settings, queryFn: () => api.get<Settings>('/settings') });
 export const useBuckets = () =>
   useQuery({ queryKey: keys.buckets, queryFn: async () => (await api.get<{ items: Bucket[] }>('/buckets')).items });

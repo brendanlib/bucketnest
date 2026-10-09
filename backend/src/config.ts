@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isValidTimeZone } from './finance/dates.js';
+import { APP_NAME, DEFAULT_SOURCE_URL } from './lib/brand.js';
 
 const EXAMPLE_SECRETS = new Set(['change-me', 'changeme', 'replace-me', 'secret']);
 
@@ -36,6 +37,14 @@ const EnvSchema = z.object({
   /** Login, sign-up and invite attempts per minute per IP. Raise only for automated tests. */
   /** Folder where bank CSVs dropped into per-account subfolders are imported automatically. Blank: off. */
   IMPORT_INBOX_DIR: z.string().default(''),
+  /** Public demo server: visitors get a throwaway sample household each; outbound features are off. */
+  DEMO_MODE: boolFromEnv(),
+  DEMO_TTL_HOURS: z.coerce.number().int().min(1).max(24 * 14).default(24),
+  DEMO_MAX_ACTIVE: z.coerce.number().int().min(1).max(10_000).default(300),
+  /** AGPL-3.0 §13: where users of this server can get its source. */
+  SOURCE_URL: z.url().default(DEFAULT_SOURCE_URL),
+  /** The product website, linked from the demo. */
+  WEBSITE_URL: z.url().default('https://bucketnest.org'),
   AUTH_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(10_000).default(5),
 });
 
@@ -59,6 +68,9 @@ export interface AppConfig {
   logLevel: string;
   jobsEnabled: boolean;
   importInboxDir: string | null;
+  demo: { enabled: boolean; ttlMs: number; maxActive: number };
+  sourceUrl: string;
+  websiteUrl: string;
   rateLimits: { auth: number; api: number };
 }
 
@@ -93,7 +105,7 @@ function parseTrustProxy(value: string, internalHops: number): AppConfig['trustP
 const COMMENT_SAFE = [
   'NODE_ENV', 'PORT', 'HOST', 'PUBLIC_URL', 'TRUST_PROXY', 'INTERNAL_PROXY_HOPS', 'ALLOW_REGISTRATION', 'COOKIE_SECURE',
   'DEFAULT_TIMEZONE', 'SESSION_IDLE_DAYS', 'SESSION_ABSOLUTE_DAYS', 'SMTP_HOST', 'SMTP_PORT', 'SEED_DEMO', 'LOG_LEVEL',
-  'JOBS_ENABLED', 'IMPORT_INBOX_DIR', 'AUTH_RATE_LIMIT_PER_MINUTE',
+  'JOBS_ENABLED', 'IMPORT_INBOX_DIR', 'AUTH_RATE_LIMIT_PER_MINUTE', 'DEMO_MODE', 'DEMO_TTL_HOURS', 'DEMO_MAX_ACTIVE',
 ];
 const stripComment = (v: string) => v.replace(/(^|\s+)#.*$/, '').trim();
 
@@ -126,7 +138,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
 
   const publicUrl = new URL(e.PUBLIC_URL);
   const smtp = e.SMTP_HOST
-    ? { host: e.SMTP_HOST, port: e.SMTP_PORT, user: e.SMTP_USER, pass: e.SMTP_PASS, from: e.SMTP_FROM || `Home Budget <no-reply@${publicUrl.hostname}>` }
+    ? { host: e.SMTP_HOST, port: e.SMTP_PORT, user: e.SMTP_USER, pass: e.SMTP_PASS, from: e.SMTP_FROM || `${APP_NAME} <no-reply@${publicUrl.hostname}>` }
     : null;
 
   return {
@@ -138,16 +150,20 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     publicOrigin: publicUrl.origin,
     sessionSecret: secret,
     trustProxy: parseTrustProxy(e.TRUST_PROXY, e.INTERNAL_PROXY_HOPS),
-    allowRegistration: e.ALLOW_REGISTRATION,
+    // A demo server takes no sign-ups (visitors get sandboxes) and sends no email.
+    allowRegistration: e.DEMO_MODE ? false : e.ALLOW_REGISTRATION,
     cookieSecure: e.COOKIE_SECURE ?? publicUrl.protocol === 'https:',
     defaultTimezone: e.DEFAULT_TIMEZONE,
     sessionIdleMs: e.SESSION_IDLE_DAYS * 86_400_000,
     sessionAbsoluteMs: e.SESSION_ABSOLUTE_DAYS * 86_400_000,
-    smtp,
+    smtp: e.DEMO_MODE ? null : smtp,
     seedDemo: e.SEED_DEMO ?? false,
     logLevel: e.LOG_LEVEL,
     jobsEnabled: e.JOBS_ENABLED ?? e.NODE_ENV !== 'test',
-    importInboxDir: e.IMPORT_INBOX_DIR.trim() || null,
+    importInboxDir: e.DEMO_MODE ? null : e.IMPORT_INBOX_DIR.trim() || null,
+    demo: { enabled: e.DEMO_MODE ?? false, ttlMs: e.DEMO_TTL_HOURS * 3_600_000, maxActive: e.DEMO_MAX_ACTIVE },
+    sourceUrl: e.SOURCE_URL,
+    websiteUrl: e.WEBSITE_URL,
     rateLimits: { auth: e.AUTH_RATE_LIMIT_PER_MINUTE, api: 300 },
   };
 }

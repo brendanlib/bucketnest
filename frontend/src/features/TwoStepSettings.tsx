@@ -9,6 +9,7 @@ import { FormError, Loading, ErrorState } from '../components/States';
 import { useToast } from '../components/Toast';
 import { formatDateTime } from '../lib/format';
 import { useHousehold } from '../lib/household';
+import { strings } from '../locales/en-AU';
 
 interface MfaStatus {
   enabled: boolean;
@@ -145,7 +146,7 @@ function EnableDialog({ onClose }: { onClose: () => void }) {
           }
         >
           <p className="small">1. In your authenticator app, add an account and scan this code.</p>
-          <div className="qr-box">{qr ? <img src={qr} width={220} height={220} alt="QR code to add Home Budget to your authenticator app" /> : <Loading />}</div>
+          <div className="qr-box">{qr ? <img src={qr} width={220} height={220} alt={`QR code to add ${strings.appName} to your authenticator app`} /> : <Loading />}</div>
           <details className="small">
             <summary>Can’t scan it? Enter this key instead</summary>
             <code className="secret-key">{setup.secret.match(/.{1,4}/g)!.join(' ')}</code>
@@ -174,7 +175,7 @@ function EnableDialog({ onClose }: { onClose: () => void }) {
 
 function RecoveryCodes({ codes, saved, onSaved, onDone }: { codes: string[]; saved: boolean; onSaved: (v: boolean) => void; onDone: () => void }) {
   const toast = useToast();
-  const text = `Home Budget recovery codes\nEach code works once, if you can't use your authenticator app.\n\n${codes.join('\n')}\n`;
+  const text = `${strings.appName} recovery codes\nEach code works once, if you can't use your authenticator app.\n\n${codes.join('\n')}\n`;
   const href = `data:text/plain;charset=utf-8,${encodeURIComponent(text)}`;
   return (
     <div className="stack">

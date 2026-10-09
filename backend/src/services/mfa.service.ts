@@ -5,6 +5,7 @@ import { AppError, conflict, notFound, validationError } from '../lib/errors.js'
 import { hmac, open, randomToken, safeEqual, seal } from '../lib/crypto.js';
 import { verifyPassword } from '../lib/password.js';
 import { newRecoveryCodes, newTotpSecret, normaliseRecoveryCode, otpauthUri, verifyTotp } from '../lib/totp.js';
+import { APP_NAME } from '../lib/brand.js';
 
 const PURPOSE = 'totp';
 /** How long the password step of a login stays good for while the code is entered. */
@@ -92,7 +93,7 @@ export function createMfaService(deps: Deps, auth: AuthService) {
       const recoveryCodes = await storeRecoveryCodes(user.id);
       await repo.deleteUserSessions(db, user.id, sessionId);
       log.info({ userId }, 'two-step sign-in enabled');
-      notify(user, 'Two-step sign-in is on', 'Two-step sign-in was turned on for your Home Budget account. Signing in now needs a code from your authenticator app.');
+      notify(user, 'Two-step sign-in is on', `Two-step sign-in was turned on for your ${APP_NAME} account. Signing in now needs a code from your authenticator app.`);
       return { recoveryCodes };
     },
 
@@ -106,7 +107,7 @@ export function createMfaService(deps: Deps, auth: AuthService) {
         db.recoveryCode.deleteMany({ where: { userId } }),
       ]);
       log.info({ userId }, 'two-step sign-in disabled');
-      notify(user, 'Two-step sign-in is off', 'Two-step sign-in was turned off for your Home Budget account.');
+      notify(user, 'Two-step sign-in is off', `Two-step sign-in was turned off for your ${APP_NAME} account.`);
     },
 
     async regenerateRecoveryCodes(userId: string, password: string, code: string) {
@@ -146,7 +147,7 @@ export function createMfaService(deps: Deps, auth: AuthService) {
       if (kind === 'recovery') {
         const left = await db.recoveryCode.count({ where: { userId, usedAt: null } });
         log.warn({ userId, ip, left }, 'signed in with a recovery code');
-        notify(user, 'A recovery code was used', `Someone signed in to your Home Budget account with a recovery code. You have ${left} left. If you've lost your phone, set up two-step sign-in again in Settings → Security.`);
+        notify(user, 'A recovery code was used', `Someone signed in to your ${APP_NAME} account with a recovery code. You have ${left} left. If you've lost your phone, set up two-step sign-in again in Settings → Security.`);
       }
       log.info({ userId, ip }, 'login succeeded (two-step)');
       return { user, session: await auth.issueSession(user.id, userAgent), usedRecoveryCode: kind === 'recovery' };
@@ -162,7 +163,7 @@ export function createMfaService(deps: Deps, auth: AuthService) {
       ]);
       await repo.deleteUserSessions(db, user.id);
       log.warn({ userId: user.id }, 'two-step sign-in removed from the CLI');
-      notify(user, 'Two-step sign-in was removed', 'The person who runs your Home Budget server removed two-step sign-in from your account.');
+      notify(user, 'Two-step sign-in was removed', `The person who runs your ${APP_NAME} server removed two-step sign-in from your account.`);
       return user;
     },
   };

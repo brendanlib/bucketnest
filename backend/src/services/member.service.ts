@@ -4,6 +4,7 @@ import * as repo from '../repositories/auth.js';
 import { AppError, conflict, forbidden, notFound, validationError } from '../lib/errors.js';
 import { hmac, randomToken } from '../lib/crypto.js';
 import { hashPassword, passwordProblem } from '../lib/password.js';
+import { APP_NAME } from '../lib/brand.js';
 
 export const INVITE_TTL_MS = 7 * 86_400_000;
 const MAX_PENDING_INVITES = 20;
@@ -126,7 +127,7 @@ export function createMemberService(deps: Deps, auth: AuthService) {
         void deps.mailer
           .send({
             to: email,
-            subject: `${inviter} invited you to ${invite.household.name} on Home Budget`,
+            subject: `${inviter} invited you to ${invite.household.name} on ${APP_NAME}`,
             text: `${inviter} has invited you to share the household budget "${invite.household.name}".\n\nOpen this link within 7 days to join:\n\n${link}\n\nIf you weren't expecting this, you can ignore this email.`,
           })
           .catch((err: unknown) => log.error({ err: (err as Error).message }, 'invite email failed'));
@@ -181,7 +182,7 @@ export function createMemberService(deps: Deps, auth: AuthService) {
       }
       const passwordHash = await hashPassword(input.password);
       const user = await db.$transaction(async (tx) => {
-        const created = await repo.createUser(tx, { email, name: input.name.trim(), passwordHash });
+        const created = await repo.createUser(tx, { email, name: input.name.trim(), passwordHash, createdAt: deps.now() });
         await join(tx, invite.id, invite.householdId, created.id);
         return created;
       });

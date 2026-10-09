@@ -3,13 +3,14 @@ import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { jsonSchemaTransform } from 'fastify-type-provider-zod';
 import { requireAuth } from './auth.js';
+import { APP_NAME } from '../lib/brand.js';
 
 /** OpenAPI generated from the route schemas, at /api/docs for logged-in users. */
 export async function registerDocs(app: FastifyInstance) {
   await app.register(swagger, {
     openapi: {
       info: {
-        title: 'Home Budget API',
+        title: `${APP_NAME} API`,
         description:
           'Money is integer cents (`amountCents`). Dates are `YYYY-MM-DD`. Every non-GET request needs the `X-CSRF-Token` header from `GET /api/auth/csrf` and an `Origin` matching PUBLIC_URL.',
         version: '1.0.0',

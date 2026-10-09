@@ -4,6 +4,7 @@ import { bucketColour } from '../lib/colours';
 import type { OnboardingStep } from '../api/types';
 import { Modal } from '../components/Modal';
 import { useHousehold } from '../lib/household';
+import { strings } from '../locales/en-AU';
 
 const STEPS: Record<OnboardingStep, { title: string; why: string; to: string; action: string }> = {
   accounts: {
@@ -137,7 +138,7 @@ export function WelcomeDialog() {
       }
     >
       <div className="stack">
-        <p>Home Budget follows the Barefoot Investor bucket method. Your take-home pay is shared across {buckets.data?.length ?? 4} buckets:</p>
+        <p>{strings.appName} uses the bucket method. Your take-home pay is shared across {buckets.data?.length ?? 4} buckets:</p>
         <ul className="bucket-legend">
           {(buckets.data ?? []).map((b) => (
             <li key={b.id}>

@@ -1,5 +1,5 @@
 {
-  "name": "home-budget-frontend",
+  "name": "bucketnest-frontend",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -35,5 +35,6 @@
   },
   "allowScripts": {
     "esbuild@0.28.2": true
-  }
+  },
+  "license": "AGPL-3.0-or-later"
 }

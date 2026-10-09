@@ -34,6 +34,12 @@ export function buildJobs(app: FastifyInstance): Job[] {
       run: () => app.services.recurring.autoPostDue(),
     },
     {
+      // Demo servers: sandboxes older than DEMO_TTL_HOURS.
+      name: 'demo-cleanup',
+      everyMs: 15 * 60_000,
+      run: () => app.demo.cleanup(),
+    },
+    {
       name: 'session-cleanup',
       everyMs: 60 * 60_000,
       run: async () => {

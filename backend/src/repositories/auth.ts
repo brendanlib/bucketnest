@@ -8,7 +8,7 @@ export const findUserById = (db: DbTx, id: string) => db.user.findUnique({ where
 
 export const countUsers = (db: DbTx) => db.user.count();
 
-export const createUser = (db: DbTx, data: { email: string; name: string; passwordHash: string }) =>
+export const createUser = (db: DbTx, data: { email: string; name: string; passwordHash: string; createdAt?: Date }) =>
   db.user.create({ data: { ...data, email: data.email.toLowerCase() } });
 
 export const updatePasswordHash = (db: DbTx, userId: string, passwordHash: string) =>

@@ -8,12 +8,13 @@ import { tooManyRequests } from '../lib/errors.js';
 import { MAX_PASSWORD_LENGTH } from '../lib/password.js';
 import { Id } from '../lib/schemas.js';
 import type { Db } from '../db.js';
+import { isDemoEmail } from '../services/demo.service.js';
 
 const Email = z.email('Enter a valid email address').max(254).transform((v) => v.trim().toLowerCase());
 const Password = z.string().min(1, 'Enter a password').max(MAX_PASSWORD_LENGTH);
 
 export const MeResponse = z.object({
-  user: z.object({ id: z.string(), email: z.string(), name: z.string(), dismissedTips: z.array(z.string()) }),
+  user: z.object({ id: z.string(), email: z.string(), name: z.string(), dismissedTips: z.array(z.string()), isDemo: z.boolean() }),
   /** Every household this user belongs to, for the switcher. */
   households: z.array(z.object({ id: z.string(), name: z.string(), role: z.enum(['OWNER', 'MEMBER']) })),
   household: z.object({
@@ -34,7 +35,7 @@ export async function buildMe(db: Db, services: Services, userId: string, househ
     services.auth.households(userId),
   ]);
   return {
-    user: { id: user.id, email: user.email, name: user.name, dismissedTips: user.dismissedTips },
+    user: { id: user.id, email: user.email, name: user.name, dismissedTips: user.dismissedTips, isDemo: isDemoEmail(user.email) },
     households,
     household: {
       id: settings.id,
@@ -66,8 +67,20 @@ export const authRoutes =
 
     app.get(
       '/auth/registration',
-      { schema: { tags: ['auth'], response: { 200: z.object({ open: z.boolean(), passwordReset: z.enum(['email', 'cli']) }) } } },
-      async () => ({ open: await services.auth.registrationOpen(), passwordReset: app.deps.mailer.enabled ? 'email' as const : 'cli' as const }),
+      {
+        schema: {
+          tags: ['auth'],
+          description: 'What the sign-in pages need to know about this server, before anyone signs in.',
+          response: { 200: z.object({ open: z.boolean(), passwordReset: z.enum(['email', 'cli']), demo: z.boolean(), sourceUrl: z.string(), websiteUrl: z.string() }) },
+        },
+      },
+      async () => ({
+        open: await services.auth.registrationOpen(),
+        passwordReset: app.deps.mailer.enabled ? ('email' as const) : ('cli' as const),
+        demo: config.demo.enabled,
+        sourceUrl: config.sourceUrl,
+        websiteUrl: config.websiteUrl,
+      }),
     );
 
     app.post(

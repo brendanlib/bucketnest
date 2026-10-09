@@ -1,4 +1,5 @@
 import { createHmac, randomBytes } from 'node:crypto';
+import { APP_NAME } from './brand.js';
 
 /** RFC 6238 TOTP with the settings every authenticator app supports: SHA-1, 30 s, 6 digits. */
 export const TOTP_PERIOD_S = 30;
@@ -71,7 +72,7 @@ export function verifyTotp(secretBase32: string, code: string, nowMs: number, la
   return null;
 }
 
-export function otpauthUri(secretBase32: string, account: string, issuer = 'Home Budget'): string {
+export function otpauthUri(secretBase32: string, account: string, issuer = APP_NAME): string {
   const label = encodeURIComponent(`${issuer}:${account}`);
   const q = new URLSearchParams({ secret: secretBase32, issuer, algorithm: 'SHA1', digits: String(DIGITS), period: String(TOTP_PERIOD_S) });
   return `otpauth://totp/${label}?${q}`;
